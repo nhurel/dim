@@ -3,6 +3,7 @@ package dim
 import (
 	"fmt"
 	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/container"
 	"testing"
 )
 
@@ -43,7 +44,7 @@ func (*NoOpDockerClient) Pull(image string) error {
 	return nil
 }
 func (*NoOpDockerClient) Inspect(image string) (types.ImageInspect, error) {
-	return types.ImageInspect{}, nil
+	return types.ImageInspect{ContainerConfig: &container.Config{}}, nil
 }
 
 func (*NoOpDockerClient) Remove(image string) error {
