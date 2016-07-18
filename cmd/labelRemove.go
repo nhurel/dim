@@ -44,7 +44,6 @@ var labelRemoveCommand = &cobra.Command{
 	},
 }
 
-
 func init() {
 	labelRemoveCommand.Flags().StringVarP(&ImageFlag, "tag", "t", "", "Tag the new labeled image")
 	labelRemoveCommand.Flags().BoolVarP(&DeleteFlag, "delete", "d", false, "Delete the original image both locally and on the registry")
