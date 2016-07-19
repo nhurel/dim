@@ -42,8 +42,12 @@ func (idx *Index) Build() error {
 	var err error
 
 	background := context.Background()
-	transport := registry.AuthTransport(http.DefaultTransport, idx.registryAuth, true)
-	//transport := http.Client{}
+
+	transport := http.DefaultTransport
+	if idx.registryAuth != nil {
+		transport = registry.AuthTransport(transport, idx.registryAuth, true)
+	}
+
 	if reg, err = client.NewRegistry(background, idx.registryUrl, transport); err != nil {
 		return err
 	}
@@ -61,6 +65,8 @@ func (idx *Index) Build() error {
 	var parsedName reference.Named
 	for i := 0; i < n; i++ {
 		last = registries[i]
+		l := logrus.WithField("repository", last)
+		l.Debugln("Indexing repository")
 		if parsedName, err = reference.ParseNamed(last); err != nil {
 			logrus.WithError(err).WithField("name", last).Errorln("Failed to parse repository name")
 			return err
@@ -80,7 +86,6 @@ func (idx *Index) Build() error {
 			logrus.WithField("repository", repository.Named().Name()).WithError(err).Errorln("Failed to get tags ")
 			return err
 		}
-
 		var mService distribution.ManifestService
 
 		if mService, err = repository.Manifests(background); err != nil {
@@ -89,6 +94,8 @@ func (idx *Index) Build() error {
 		}
 
 		for _, tag := range tags {
+			l = l.WithField("tag", tag)
+			l.Debugln("Getting tag details")
 			var tDescriptor distribution.Descriptor
 			if tDescriptor, err = tService.Get(background, tag); err != nil {
 				logrus.WithFields(logrus.Fields{"repository": repository.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to get Tag")
@@ -96,17 +103,21 @@ func (idx *Index) Build() error {
 			}
 
 			var mf distribution.Manifest
-
+			l = l.WithField("tagDigest", tDescriptor.Digest)
+			l.Debugln("Getting manifest")
 			if mf, err = mService.Get(background, tDescriptor.Digest, distribution.WithTag(tag)); err != nil {
 				logrus.WithFields(logrus.Fields{"repository": repository.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to get manifest")
 				return err
 			}
+
+			l.Debugln("Reading manifest")
 			var payload []byte
 			if _, payload, err = mf.Payload(); err != nil {
 				logrus.WithError(err).Errorln("Failed to read manifest")
 				return err
 			}
 
+			l.Debugln("Unmarshalling manifest")
 			im := &ImageManifest{}
 			if err = json.Unmarshal(payload, im); err != nil {
 				logrus.WithFields(logrus.Fields{"repository": repository.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to read image manifest")
@@ -114,11 +125,14 @@ func (idx *Index) Build() error {
 			}
 
 			img := &image.V1Image{}
-
+			l = l.WithField("imageManifest", im)
+			l.Debugln("Reading image")
 			if err = json.Unmarshal([]byte(im.History[0]["v1Compatibility"]), img); err != nil {
 				logrus.WithFields(logrus.Fields{"repository": repository.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to unmarshall image info")
 				return err
 			}
+
+			l.WithField("image", img).Debugln("Indexing image")
 
 			go func(n, t string, i *image.V1Image) {
 				idx.IndexImage(Parse(n, t, i))
