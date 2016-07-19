@@ -309,6 +309,12 @@
 			"revisionTime": "2016-07-01T17:59:50Z"
 		},
 		{
+			"checksumSHA1": "sENYoE05tfuTC38SKYC+lKCDI1s=",
+			"path": "github.com/docker/distribution/registry/client/auth",
+			"revision": "4e17ab5d319ac5b70b2769442947567a83386fbc",
+			"revisionTime": "2016-07-01T17:59:50Z"
+		},
+		{
 			"checksumSHA1": "VDfI80dOZWOJU7+neHqv2uT5Th8=",
 			"path": "github.com/docker/distribution/registry/client/transport",
 			"revision": "4e17ab5d319ac5b70b2769442947567a83386fbc",
@@ -375,6 +381,12 @@
 			"revisionTime": "2016-07-02T09:32:40Z"
 		},
 		{
+			"checksumSHA1": "fXAinpJ5bOcborK7AiO1rnW60BI=",
+			"path": "github.com/docker/docker/opts",
+			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
+			"revisionTime": "2016-07-02T09:32:40Z"
+		},
+		{
 			"checksumSHA1": "DDLketzvtx23NTRmSkuxuhFzPLY=",
 			"path": "github.com/docker/docker/pkg/archive",
 			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
@@ -395,6 +407,12 @@
 		{
 			"checksumSHA1": "790kr4hx8KKGDHwCzZf01RVtuuc=",
 			"path": "github.com/docker/docker/pkg/gitutils",
+			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
+			"revisionTime": "2016-07-02T09:32:40Z"
+		},
+		{
+			"checksumSHA1": "p6Ud4Yf1ywWy20YxXF1RU4yhTio=",
+			"path": "github.com/docker/docker/pkg/homedir",
 			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
 			"revisionTime": "2016-07-02T09:32:40Z"
 		},
@@ -431,6 +449,12 @@
 		{
 			"checksumSHA1": "ndnAFCfsGC3upNQ6jAEwzxcurww=",
 			"path": "github.com/docker/docker/pkg/longpath",
+			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
+			"revisionTime": "2016-07-02T09:32:40Z"
+		},
+		{
+			"checksumSHA1": "Pv+6WkGeCg8afshv3WiUiHul0Ww=",
+			"path": "github.com/docker/docker/pkg/mflag",
 			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
 			"revisionTime": "2016-07-02T09:32:40Z"
 		},
@@ -533,6 +557,12 @@
 		{
 			"checksumSHA1": "6sgsKtDM509Mv2OlwhgUMjY/Ihc=",
 			"path": "github.com/docker/docker/reference",
+			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
+			"revisionTime": "2016-07-02T09:32:40Z"
+		},
+		{
+			"checksumSHA1": "lzznbaE9Aoi1Wz3AWCNIApAdw/0=",
+			"path": "github.com/docker/docker/registry",
 			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
 			"revisionTime": "2016-07-02T09:32:40Z"
 		},

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/server"
 	"github.com/spf13/cobra"
@@ -24,7 +25,12 @@ var serverCommand = &cobra.Command{
 		realDir := path.Join(IndexDir, time.Now().Format("20060102150405.000"))
 		logrus.Warnf("Creating index dir at %s\n", realDir)
 
-		index, err := index.New(realDir, args[0])
+		var authConfig *types.AuthConfig
+		if username != "" || password != "" {
+			authConfig = &types.AuthConfig{Username: username, Password: password}
+		}
+
+		index, err := index.New(realDir, args[0], authConfig)
 		if err != nil {
 			return err
 		}
@@ -40,12 +46,17 @@ var serverCommand = &cobra.Command{
 var (
 	Port     string
 	IndexDir string
-	s        *server.Server
+	username string
+	password string
 )
+
+var s *server.Server
 
 func init() {
 	serverCommand.Flags().StringVarP(&Port, "port", "p", "0.0.0.0:6000", "Dim listening port")
 	serverCommand.Flags().StringVar(&IndexDir, "index-path", "dim.index", "Dim listening port")
+	serverCommand.Flags().StringVar(&username, "registry-user", "", "Registry username")
+	serverCommand.Flags().StringVar(&password, "registry-password", "", "Registry password")
 	RootCommand.AddCommand(serverCommand)
 }
 

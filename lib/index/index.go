@@ -10,6 +10,8 @@ import (
 	"github.com/docker/distribution/registry/client"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/reference"
+	"github.com/docker/docker/registry"
+	"github.com/docker/engine-api/types"
 	"golang.org/x/net/context"
 	"io"
 	"net/http"
@@ -17,11 +19,12 @@ import (
 
 type Index struct {
 	bleve.Index
-	registryUrl string
+	registryUrl  string
+	registryAuth *types.AuthConfig
 }
 
 // New create a new instance to manage a index of a given registry into a specific directory
-func New(dir string, registryUrl string) (*Index, error) {
+func New(dir string, registryUrl string, registryAuth *types.AuthConfig) (*Index, error) {
 	var i bleve.Index
 	var err error
 
@@ -30,15 +33,17 @@ func New(dir string, registryUrl string) (*Index, error) {
 	if i, err = bleve.New(dir, mapping); err != nil {
 		return nil, err
 	}
-	return &Index{i, registryUrl}, nil
+	return &Index{i, registryUrl, registryAuth}, nil
 }
 
 // Build creates a full index from the registry
 func (idx *Index) Build() error {
 	var reg client.Registry
 	var err error
+
 	background := context.Background()
-	transport := http.DefaultTransport
+	transport := registry.AuthTransport(http.DefaultTransport, idx.registryAuth, true)
+	//transport := http.Client{}
 	if reg, err = client.NewRegistry(background, idx.registryUrl, transport); err != nil {
 		return err
 	}

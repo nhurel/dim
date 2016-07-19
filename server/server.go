@@ -3,13 +3,13 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/search"
 	"github.com/docker/engine-api/types/registry"
 	"github.com/mailgun/manners"
 	"github.com/nhurel/dim/lib/index"
 	"net/http"
-	"github.com/Sirupsen/logrus"
 )
 
 type Server struct {
@@ -19,7 +19,7 @@ type Server struct {
 
 func NewServer(port string, index *index.Index) *Server {
 	http.HandleFunc("/v1/search", handler(index, Search))
-	return &Server{manners.NewWithServer(&http.Server{Addr: port, Handler:http.DefaultServeMux}), index}
+	return &Server{manners.NewWithServer(&http.Server{Addr: port, Handler: http.DefaultServeMux}), index}
 }
 
 func (s *Server) Run() error {
