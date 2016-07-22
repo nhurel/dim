@@ -33,9 +33,9 @@ func (im Image) Type() string {
 }
 
 // Parse converts a docker image into an indexable image
-func Parse(name, tag string, img *image.V1Image) *Image {
+func Parse(name, tag string, img *image.Image) *Image {
 	parsed := &Image{
-		ID:      img.ID,
+		ID:      img.ImageID(),
 		Name:    name,
 		Tag:     tag,
 		Comment: img.Comment,

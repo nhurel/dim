@@ -34,7 +34,7 @@ var labelRemoveCommand = &cobra.Command{
 			return err
 		}
 
-		if OverrideFlag || DeleteFlag {
+		if OverrideFlag || RemoteFlag {
 			if dim.ListContains(imageTags, image) && image != tag {
 				Dim.Remove(image)
 			}
@@ -46,7 +46,7 @@ var labelRemoveCommand = &cobra.Command{
 
 func init() {
 	labelRemoveCommand.Flags().StringVarP(&ImageFlag, "tag", "t", "", "Tag the new labeled image")
-	labelRemoveCommand.Flags().BoolVarP(&DeleteFlag, "delete", "d", false, "Delete the original image both locally and on the registry")
+	labelRemoveCommand.Flags().BoolVarP(&RemoteFlag, "delete", "d", false, "Delete the original image both locally and on the registry")
 	labelRemoveCommand.Flags().BoolVarP(&OverrideFlag, "override", "o", false, "Delete the original image locally only")
 	labelRemoveCommand.Flags().BoolVarP(&PullFlag, "pull", "p", false, "Pull the image before adding label to ensure label is added to latest version")
 
