@@ -83,17 +83,16 @@ func (r *Repository) blobService() distribution.BlobService {
 	return r.bfs
 }
 
-func (r *Repository) Image(tag string) (*image.Image, error) {
-	var err error
+func (r *Repository) Image(tag string) (dg string, img *image.Image, err error) {
 
 	var tagDigest digest.Digest
 	if tagDigest, err = r.getTagDigest(tag); err != nil {
-		return nil, err
+		return
 	}
 
 	var mService distribution.ManifestService
 	if mService, err = r.manifestService(); err != nil {
-		return nil, err
+		return
 	}
 
 	var mf distribution.Manifest
@@ -101,37 +100,38 @@ func (r *Repository) Image(tag string) (*image.Image, error) {
 	l.Debugln("Getting manifest")
 	if mf, err = mService.Get(ctx, tagDigest, distribution.WithTag(tag)); err != nil {
 		logrus.WithFields(logrus.Fields{"repository": r.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to get manifest")
-		return nil, err
+		return
 	}
 
 	l.Debugln("Reading manifest")
 	var payload []byte
 	if _, payload, err = mf.Payload(); err != nil {
 		logrus.WithError(err).Errorln("Failed to read manifest")
-		return nil, err
+		return
 	}
 
 	l.Debugln("Unmarshalling manifest")
 	manif := &schema2.Manifest{}
 	if err = json.Unmarshal(payload, manif); err != nil {
 		logrus.WithFields(logrus.Fields{"repository": r.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to read image manifest")
-		return nil, err
+		return
 	}
 
+	dg = string(manif.Config.Digest)
 	if payload, err = r.blobService().Get(ctx, manif.Config.Digest); err != nil {
 		logrus.WithError(err).Errorln("Failed to get image config")
-		return nil, err
+		return
 	}
 
 	l.Debugln("Unmarshalling V2Image")
 
-	img := &image.Image{}
+	img = &image.Image{}
 	if err = json.Unmarshal(payload, img); err != nil {
 		logrus.WithFields(logrus.Fields{"repository": r.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to read image")
-		return nil, err
+		return
 	}
 
-	return img, nil
+	return
 }
 
 func (r *Repository) getTagDigest(tag string) (digest.Digest, error) {

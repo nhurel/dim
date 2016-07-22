@@ -96,15 +96,16 @@ func (idx *Index) indexRepository(repo string, ctx context.Context) error {
 		l.Debugln("Getting image details")
 
 		var img *image.Image
-		if img, err = repository.Image(tag); err != nil {
+		var id string
+		if id, img, err = repository.Image(tag); err != nil {
 			return err
 		}
 
 		l.WithField("image", img).Debugln("Indexing image")
 
-		go func(n, t string, i *image.Image) {
-			idx.IndexImage(Parse(n, t, i))
-		}(repo, tag, img)
+		go func(d, n, t string, i *image.Image) {
+			idx.IndexImage(Parse(d, n, t, i))
+		}(id, repo, tag, img)
 	}
 
 	return nil

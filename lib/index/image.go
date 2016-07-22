@@ -7,6 +7,7 @@ import (
 	"github.com/blevesearch/blevex/detect_lang"
 	"time"
 	//"github.com/docker/engine-api/types/container"
+	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/docker/docker/image"
 	"strings"
@@ -33,9 +34,9 @@ func (im Image) Type() string {
 }
 
 // Parse converts a docker image into an indexable image
-func Parse(name, tag string, img *image.Image) *Image {
+func Parse(id, name, tag string, img *image.Image) *Image {
 	parsed := &Image{
-		ID:      img.ImageID(),
+		ID:      id,
 		Name:    name,
 		Tag:     tag,
 		Comment: img.Comment,
@@ -68,6 +69,7 @@ func Parse(name, tag string, img *image.Image) *Image {
 	}
 	parsed.Env = envs
 
+	logrus.WithField("image", parsed).Debugln("Docker image parsed")
 	return parsed
 }
 
