@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/digest"
@@ -11,6 +12,7 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/docker/engine-api/types"
+	"github.com/howeyc/gopass"
 	"golang.org/x/net/context"
 	"net/http"
 )
@@ -42,6 +44,37 @@ func New(registryAuth *types.AuthConfig, registryUrl string) (*Client, error) {
 
 	if reg, err = client.NewRegistry(ctx, registryUrl, transport); err != nil {
 		return nil, err
+	}
+
+	repos := make([]string, 1)
+	for _, err = reg.Repositories(ctx, repos, ""); err != nil; _, err = reg.Repositories(ctx, repos, "") {
+		logrus.Debugln("Prompting for credentials")
+		if registryAuth == nil {
+			registryAuth = &types.AuthConfig{}
+		}
+		if registryAuth.Username != "" {
+			fmt.Printf("Username (%s) :", registryAuth.Username)
+		} else {
+			fmt.Print("Username :")
+		}
+		var input string
+		fmt.Scanln(&input)
+		if input != "" {
+			registryAuth.Username = input
+		} else if registryAuth.Username == "" {
+			return nil, err
+		}
+		fmt.Print("Password :")
+		pwd, _ := gopass.GetPasswd()
+		input = string(pwd)
+		if input == "" {
+			return nil, err
+		}
+		registryAuth.Password = input
+		transport = registry.AuthTransport(transport, registryAuth, true)
+		if reg, err = client.NewRegistry(ctx, registryUrl, transport); err != nil {
+			return nil, err
+		}
 	}
 
 	return &Client{reg, transport, registryUrl}, nil
