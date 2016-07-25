@@ -1,7 +1,6 @@
 package index
 
 import (
-	"github.com/blevesearch/bleve/analysis/analyzers/keyword_analyzer"
 	"github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
 	"github.com/blevesearch/bleve/analysis/datetime_parsers/datetime_optional"
 	"github.com/blevesearch/blevex/detect_lang"
@@ -80,25 +79,26 @@ func init() {
 	imageMapping = bleve.NewDocumentMapping()
 
 	tagMapping := bleve.NewTextFieldMapping()
-	tagMapping.Analyzer = keyword_analyzer.Name
+	tagMapping.Analyzer = simple_analyzer.Name
 	tagMapping.IncludeInAll = true
 	tagMapping.Store = true
 
 	imageMapping.AddFieldMappingsAt("Tag", tagMapping)
+	imageMapping.AddFieldMappingsAt("Name", tagMapping)
 
-	//disabledMappings := bleve.NewDocumentDisabledMapping()
 	disabledFieldMapping := bleve.NewTextFieldMapping()
 	disabledFieldMapping.Store = false
 	disabledFieldMapping.IncludeInAll = false
 	disabledFieldMapping.Index = false
 	imageMapping.AddFieldMappingsAt("ID", disabledFieldMapping)
 
-	nameMapping := bleve.NewTextFieldMapping()
-	nameMapping.Analyzer = simple_analyzer.Name
-	nameMapping.IncludeInAll = true
-	nameMapping.Store = true
-	imageMapping.AddFieldMappingsAt("Name", nameMapping)
-	imageMapping.AddFieldMappingsAt("Author", nameMapping)
+	authorMapping := bleve.NewTextFieldMapping()
+	authorMapping.Analyzer = simple_analyzer.Name
+	authorMapping.IncludeInAll = false
+	authorMapping.Store = true
+	imageMapping.AddFieldMappingsAt("Author", authorMapping)
+	imageMapping.AddFieldMappingsAt("Volumes", authorMapping)
+	imageMapping.AddFieldMappingsAt("Labels", authorMapping)
 
 	commentMapping := bleve.NewTextFieldMapping()
 	commentMapping.Analyzer = detect_lang.AnalyzerName
@@ -108,9 +108,18 @@ func init() {
 
 	dateMapping := bleve.NewDateTimeFieldMapping()
 	dateMapping.DateFormat = datetime_optional.Name
-	dateMapping.Store = false
+	dateMapping.Store = true
 	dateMapping.IncludeInAll = false
 	imageMapping.AddFieldMappingsAt("Created", dateMapping)
+
+	portsMapping := bleve.NewNumericFieldMapping()
+	portsMapping.Store = false
+	portsMapping.IncludeInAll = false
+	imageMapping.AddFieldMappingsAt("ExposedPorts", portsMapping)
+
+
+
+	imageMapping.DefaultAnalyzer = simple_analyzer.Name
 
 	// FIXME: how should be indexed collections ?
 
