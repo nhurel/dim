@@ -30,14 +30,14 @@ var serverCommand = &cobra.Command{
 			authConfig = &types.AuthConfig{Username: username, Password: password}
 		}
 
-		index, err := index.New(realDir, args[0], authConfig)
+		idx, err := index.New(realDir, args[0], authConfig)
 		if err != nil {
 			return err
 		}
-		if err = index.Build(); err != nil {
+		if err = idx.Build(); err != nil {
 			return err
 		}
-		s = server.NewServer(Port, index)
+		s = server.NewServer(Port, idx)
 		logrus.Infoln("Server listening...")
 		return s.Run()
 	},
