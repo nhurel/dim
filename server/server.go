@@ -41,7 +41,9 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 
 	q := r.FormValue("q")
 
-	if q == "" {
+	a := r.FormValue("a")
+
+	if q == "" && a == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(w, err)
 		return
@@ -49,8 +51,9 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 
 	var sr *bleve.SearchResult
 
-	request := bleve.NewSearchRequest(i.BuildQuery(q))
+	request := bleve.NewSearchRequest(i.BuildQuery(q, a))
 	request.Fields = []string{"Name", "Tag"}
+	logrus.WithField("request", request).WithField("query", request.Query).Debugln("Running search")
 	if sr, err = i.Search(request); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, err)

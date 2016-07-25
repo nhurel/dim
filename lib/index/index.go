@@ -116,10 +116,18 @@ func (idx *Index) IndexImage(image *Image) {
 	idx.Index.Index(image.ID, image)
 }
 
-func (idx *Index) BuildQuery(nameTag string) bleve.Query {
-	return bleve.NewBooleanQuery(nil, []bleve.Query{
-		bleve.NewFuzzyQuery(nameTag).SetField("Name"),
-		bleve.NewFuzzyQuery(nameTag).SetField("Tag"),
-	}, nil)
+func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {
+	bq := make([]bleve.Query, 0, 3)
+
+	if nameTag != "" {
+		bq = append(bq, bleve.NewFuzzyQuery(nameTag).SetField("Name"), bleve.NewFuzzyQuery(nameTag).SetField("Tag"))
+	}
+
+	if advanced != "" {
+		bq = append(bq, bleve.NewQueryStringQuery(advanced))
+	}
+
+	logrus.WithField("queries", bq).Debugln("Returning query with should clauses")
+	return bleve.NewBooleanQuery(nil, bq, nil)
 
 }
