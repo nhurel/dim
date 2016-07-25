@@ -115,3 +115,11 @@ func (idx *Index) indexRepository(repo string, ctx context.Context) error {
 func (idx *Index) IndexImage(image *Image) {
 	idx.Index.Index(image.ID, image)
 }
+
+func (idx *Index) BuildQuery(nameTag string) bleve.Query {
+	return bleve.NewBooleanQuery(nil, []bleve.Query{
+		bleve.NewFuzzyQuery(nameTag).SetField("Name"),
+		bleve.NewFuzzyQuery(nameTag).SetField("Tag"),
+	}, nil)
+
+}

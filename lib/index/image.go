@@ -117,8 +117,6 @@ func init() {
 	portsMapping.IncludeInAll = false
 	imageMapping.AddFieldMappingsAt("ExposedPorts", portsMapping)
 
-
-
 	imageMapping.DefaultAnalyzer = simple_analyzer.Name
 
 	// FIXME: how should be indexed collections ?

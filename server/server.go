@@ -48,7 +48,8 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sr *bleve.SearchResult
-	request := bleve.NewSearchRequest(bleve.NewFuzzyQuery(q))
+
+	request := bleve.NewSearchRequest(i.BuildQuery(q))
 	request.Fields = []string{"Name", "Tag"}
 	if sr, err = i.Search(request); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

@@ -693,6 +693,12 @@
 			"revisionTime": "2016-02-29T03:40:56Z"
 		},
 		{
+			"checksumSHA1": "WI+JevQX15p9zqngb1BMHvrPAgU=",
+			"path": "github.com/howeyc/gopass",
+			"revision": "66487b23f2880ba32e185121d2cd51a338ea069a",
+			"revisionTime": "2016-03-03T20:01:16Z"
+		},
+		{
 			"checksumSHA1": "cRYZIRxG2oHy+38PdAffFhpES58=",
 			"path": "github.com/mailgun/manners",
 			"revision": "fada45142db3f93097ca917da107aa3fad0ffcb5",
@@ -741,6 +747,12 @@
 			"revisionTime": "2016-06-26T19:00:37Z"
 		},
 		{
+			"checksumSHA1": "N5fb5y92DFIP+wUhi1rSwPp9vyk=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "7b428712abe956d0e9e1e9a01e163fb6c7171438",
+			"revisionTime": "2016-04-19T20:20:54Z"
+		},
+		{
 			"checksumSHA1": "5ARrN3Zq+E9zazFb/N+b08Serys=",
 			"path": "golang.org/x/net/context",
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172",
@@ -757,6 +769,12 @@
 			"path": "golang.org/x/sys/unix",
 			"revision": "f64b50fbea64174967a8882830d621a18ee1548e",
 			"revisionTime": "2016-04-14T13:31:22Z"
+		},
+		{
+			"checksumSHA1": "I2d7Kn572Fz02mnnlcI4MHXCu0c=",
+			"path": "gopkg.in/check.v1",
+			"revision": "4f90aeace3a26ad7021961c297b22c42160c7b25",
+			"revisionTime": "2016-01-05T16:49:36Z"
 		}
 	],
 	"rootPath": "github.com/nhurel/dim"
