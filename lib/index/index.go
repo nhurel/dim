@@ -9,6 +9,7 @@ import (
 	"github.com/nhurel/dim/lib/registry"
 	"golang.org/x/net/context"
 	"io"
+	"strings"
 )
 
 type Index struct {
@@ -119,8 +120,16 @@ func (idx *Index) IndexImage(image *Image) {
 func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {
 	bq := make([]bleve.Query, 0, 3)
 
+	name := nameTag
+	tag := nameTag
+
+	if split := strings.Split(nameTag, ":"); len(split) == 2 {
+		name = split[0]
+		tag = split[1]
+	}
+
 	if nameTag != "" {
-		bq = append(bq, bleve.NewFuzzyQuery(nameTag).SetField("Name"), bleve.NewFuzzyQuery(nameTag).SetField("Tag"))
+		bq = append(bq, bleve.NewFuzzyQuery(name).SetField("Name"), bleve.NewMatchQuery(tag).SetField("Tag"))
 	}
 
 	if advanced != "" {

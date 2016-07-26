@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/Sirupsen/logrus"
@@ -12,9 +13,16 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/docker/engine-api/types"
+	reg "github.com/docker/engine-api/types/registry"
 	"github.com/howeyc/gopass"
 	"golang.org/x/net/context"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"strings"
+	"text/tabwriter"
+	"text/template"
 )
 
 type Client struct {
@@ -88,6 +96,71 @@ func (c *Client) NewRepository(parsedName reference.Named) (Repository, error) {
 		return Repository{Repository: repo, client: c}, nil
 	}
 }
+
+func (c *Client) Search(query, advanced string) error {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	q := strings.TrimSpace(query)
+	a := strings.TrimSpace(advanced)
+	var err error
+	if q != "" {
+		if err = writer.WriteField("q", q); err != nil {
+			return err
+		}
+	}
+	if a != "" {
+		if err = writer.WriteField("a", a); err != nil {
+			return err
+		}
+	}
+	if err = writer.Close(); err != nil {
+		return err
+	}
+
+	var req *http.Request
+
+	if req, err = http.NewRequest(http.MethodPost, strings.Join([]string{c.registryUrl, "/v1/search"}, ""), body); err != nil {
+		return fmt.Errorf("Failed to create request : %v", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	var resp *http.Response
+
+	logrus.WithField("request", req.Body).Debugln("Sending request")
+
+	httpClient := http.Client{Transport: c.transport}
+	if resp, err = httpClient.Do(req); err != nil {
+		return fmt.Errorf("Failed to send request : %v", err)
+	}
+	defer resp.Body.Close()
+	var b []byte
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		results := &reg.SearchResults{}
+		if err := json.NewDecoder(resp.Body).Decode(results); err != nil {
+			return fmt.Errorf("Failed to parse response : %v", err)
+		}
+
+		t, _ := template.New("search").Parse(searchResultTemplate)
+		w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
+		if err = t.Execute(w, results); err != nil {
+			logrus.WithError(err).Errorln("Failed to parse template")
+		}
+		w.Flush()
+
+	} else {
+		b, _ = ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("Server returned an error", string(b))
+	}
+	return nil
+
+}
+
+const searchResultTemplate = `
+{{.NumResults}} Results found :
+Name	Tag	Automated	Official
+{{ range $i, $r := .Results}} {{- $r.Name}}	{{$r.Description}}	{{$r.IsAutomated}}	{{$r.IsOfficial }}
+{{end}}
+`
 
 func (r *Repository) AllTags() ([]string, error) {
 	return r.tagService().All(ctx)

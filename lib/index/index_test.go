@@ -1,7 +1,6 @@
 package index
 
 import (
-	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	. "gopkg.in/check.v1"
@@ -25,7 +24,7 @@ var (
 			ID:      "123456",
 			Name:    "centos",
 			Tag:     "centos6",
-			Created: ParseTime("2016-07-24T09:05:06"),
+			Created: parseTime("2016-07-24T09:05:06"),
 			Labels: map[string]interface{}{
 				"type":   "base",
 				"family": "rhel",
@@ -35,7 +34,7 @@ var (
 			ID:      "234567",
 			Name:    "httpd",
 			Tag:     "2.4",
-			Created: ParseTime("2016-06-23T09:05:06"),
+			Created: parseTime("2016-06-23T09:05:06"),
 			Labels: map[string]interface{}{
 				"type":      "web",
 				"family":    "debian",
@@ -54,7 +53,7 @@ var (
 			ID:      "354678",
 			Name:    "mysql",
 			Tag:     "5.7",
-			Created: ParseTime("2016-06-30T09:05:06"),
+			Created: parseTime("2016-06-30T09:05:06"),
 			Labels: map[string]interface{}{
 				"type":      "sql",
 				"family":    "debian",
@@ -71,7 +70,7 @@ var (
 	}
 )
 
-func ParseTime(value string) time.Time {
+func parseTime(value string) time.Time {
 	t, _ := time.Parse(time.RFC3339, value)
 	return t
 }
@@ -103,45 +102,29 @@ func (s *TestSuite) SetUpTest(c *C) {
 	// Nothing
 }
 
-func (s *TestSuite) TestFuzzySearchOnMysql(c *C) {
-	var tests = []string{"mysql", "sql", "5.7", "ysql"}
-
-	for _, t := range tests {
-		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(bleve.NewFuzzyQuery(t))
-		request.Fields = []string{"Name", "Tag"}
-		results, err := s.index.Index.Search(request)
-		c.Assert(err, IsNil)
-		c.Log(results)
-		c.Assert(results.Total, Equals, uint64(1))
-		c.Assert(results.Hits, HasLen, 1)
-		c.Assert(results.Hits[0].Fields["Name"], Equals, "mysql")
-		c.Assert(results.Hits[0].Fields["Tag"], Equals, "5.7")
-	}
-}
-
-func (s *TestSuite) TestTermSearch(c *C) {
+func (s *TestSuite) TestNameTagSearch(c *C) {
 	var tests = []struct {
 		query       string
 		resultNames []string
 	}{
 		{"mysql", []string{"mysql"}},
-		{"ysql", []string{}},
+		{"ysql", []string{"mysql"}},
 		{"sql", []string{"mysql"}},
 		{"5.7", []string{"mysql"}},
-		{"5.7.9", []string{"mysql"}},
-		{"1debian8", []string{"mysql"}},
-		{"debian", []string{"mysql", "httpd"}},
-		{"base", []string{"centos"}},
-		{"apache", []string{"httpd"}},
-		{"apache2", []string{"httpd"}},
+		{"5.7.9", []string{}},
+		{"1debian8", []string{}},
+		{"debian", []string{}},
+		{"base", []string{}},
+		{"apache2", []string{}},
+		{"mysql:5.7", []string{"mysql"}},
+		{"http*:2.4", []string{"httpd"}},
 	}
 
 	for _, t := range tests {
 		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(bleve.NewTermQuery(t.query))
+		request := bleve.NewSearchRequest(s.index.BuildQuery(t.query, ""))
 		request.Fields = []string{"Name", "Tag"}
-		results, err := s.index.Index.Search(request)
+		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)
 		c.Log(results)
 		c.Assert(results.Total, Equals, uint64(len(t.resultNames)))
@@ -152,29 +135,25 @@ func (s *TestSuite) TestTermSearch(c *C) {
 	}
 }
 
-func (s *TestSuite) TestQueryAllSearch(c *C) {
+func (s *TestSuite) TestAdvancedSearch(c *C) {
 	var tests = []struct {
 		query       string
 		resultNames []string
 	}{
-		{"mysql", []string{"mysql"}},
-		{"ysql", []string{}},
-		{"sql", []string{"mysql"}},
-		{"5.7", []string{"mysql"}},
-		{"5", []string{"mysql"}},
-		{"5.7.9", []string{"mysql"}},
-		{"1debian8", []string{"mysql"}},
-		{"debian", []string{"mysql", "httpd"}},
-		{"base", []string{"centos"}},
+		{"Name:mysql", []string{"mysql"}},
+		{"Tag:5.7", []string{"mysql"}},
+		{"Env.MYSQL_VERSION:5.7.9-1debian8", []string{"mysql"}},
+		{"Env.MYSQL_VERSION:5.7.9", []string{"mysql"}},
+		{"Labels.family:debian", []string{"httpd", "mysql"}},
+		{"Labels.type:base", []string{"centos"}},
 		{"apache", []string{"httpd"}},
-		{"apache2", []string{"httpd"}},
 	}
 
 	for _, t := range tests {
 		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(bleve.NewQueryStringQuery(fmt.Sprintf("*%s*", t.query)))
+		request := bleve.NewSearchRequest(s.index.BuildQuery("", t.query))
 		request.Fields = []string{"Name", "Tag"}
-		results, err := s.index.Index.Search(request)
+		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)
 		c.Log(results)
 		c.Assert(results.Total, Equals, uint64(len(t.resultNames)))

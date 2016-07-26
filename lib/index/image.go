@@ -8,6 +8,7 @@ import (
 	//"github.com/docker/engine-api/types/container"
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/analysis/analyzers/keyword_analyzer"
 	"github.com/docker/docker/image"
 	"strings"
 )
@@ -79,12 +80,16 @@ func init() {
 	imageMapping = bleve.NewDocumentMapping()
 
 	tagMapping := bleve.NewTextFieldMapping()
-	tagMapping.Analyzer = simple_analyzer.Name
+	tagMapping.Analyzer = keyword_analyzer.Name
 	tagMapping.IncludeInAll = true
 	tagMapping.Store = true
-
 	imageMapping.AddFieldMappingsAt("Tag", tagMapping)
-	imageMapping.AddFieldMappingsAt("Name", tagMapping)
+
+	nameMapping := bleve.NewTextFieldMapping()
+	nameMapping.Analyzer = simple_analyzer.Name
+	nameMapping.IncludeInAll = true
+	nameMapping.Store = true
+	imageMapping.AddFieldMappingsAt("Name", nameMapping)
 
 	disabledFieldMapping := bleve.NewTextFieldMapping()
 	disabledFieldMapping.Store = false

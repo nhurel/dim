@@ -48,6 +48,8 @@ var (
 	IndexDir string
 	username string
 	password string
+	url      string
+	//secure bool
 )
 
 var s *server.Server
