@@ -146,6 +146,9 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 		{"Env.MYSQL_VERSION:5.7.9", []string{"mysql"}},
 		{"Labels.family:debian", []string{"httpd", "mysql"}},
 		{"Labels.type:base", []string{"centos"}},
+		{"Env.HTTPD_VERSION:2*", []string{"httpd"}},
+		{"Env.HTTPD_VERSION:2.*", []string{"httpd"}},
+		{"Env.HTTPD_VERSION:/*/", []string{"httpd"}},
 		{"apache", []string{"httpd"}},
 	}
 
