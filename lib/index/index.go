@@ -3,6 +3,7 @@ package index
 import (
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
+	"github.com/docker/distribution/digest"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
@@ -112,9 +113,32 @@ func (idx *Index) indexRepository(repo string, ctx context.Context) error {
 	return nil
 }
 
+func (idx *Index) GetImageAndIndex(repository, tag string, dg digest.Digest) error {
+	named, _ := reference.ParseNamed(repository)
+	if repo, err := idx.regClient.NewRepository(named); err != nil {
+		logrus.WithError(err).WithField("Repository", repository).Errorln("Failed get repository info")
+		return err
+	} else {
+		if img, err := repo.ImageFromManifest(dg); err != nil {
+			logrus.WithError(err).Errorln("Failed to get image info from manifest")
+			return err
+		} else {
+			idx.IndexImage(Parse(string(dg), repository, tag, img))
+		}
+	}
+	return nil
+}
+
 // IndexImage adds a given image into the index
 func (idx *Index) IndexImage(image *Image) {
+	logrus.WithField("imageID", image.ID).Debugln("Indexing image")
 	idx.Index.Index(image.ID, image)
+}
+
+// IndexImage adds a given image into the index
+func (idx *Index) DeleteImage(id string) {
+	logrus.WithField("imageID", id).Debugln("Removing image from index")
+	idx.Index.Delete(id)
 }
 
 func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {

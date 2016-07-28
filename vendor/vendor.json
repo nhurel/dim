@@ -279,6 +279,12 @@
 			"revisionTime": "2016-07-21T18:12:05Z"
 		},
 		{
+			"checksumSHA1": "pwA25hzHKC1P0XpMyIzoEp9EsNo=",
+			"path": "github.com/docker/distribution/notifications",
+			"revision": "f56b143dc82671123c828bdab0ff972881c6035c",
+			"revisionTime": "2016-07-21T18:12:05Z"
+		},
+		{
 			"checksumSHA1": "PzXRTLmmqWXxmDqdIXLcRYBma18=",
 			"path": "github.com/docker/distribution/reference",
 			"revision": "f56b143dc82671123c828bdab0ff972881c6035c",

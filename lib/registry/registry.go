@@ -40,6 +40,7 @@ type Repository struct {
 
 var ctx = context.Background()
 
+// Create a registry client. Handles getting right credentials from user
 func New(registryAuth *types.AuthConfig, registryUrl string) (*Client, error) {
 	var err error
 	var reg client.Registry
@@ -88,6 +89,7 @@ func New(registryAuth *types.AuthConfig, registryUrl string) (*Client, error) {
 	return &Client{reg, transport, registryUrl}, nil
 }
 
+// Create a Repository object to query the registry about a specific repository
 func (c *Client) NewRepository(parsedName reference.Named) (Repository, error) {
 	logrus.WithField("name", parsedName).Debugln("Creating new repository")
 	if repo, err := client.NewRepository(ctx, parsedName, c.registryUrl, c.transport); err != nil {
@@ -97,6 +99,7 @@ func (c *Client) NewRepository(parsedName reference.Named) (Repository, error) {
 	}
 }
 
+// Runs a search against the registry, handling dim advanced querying option
 func (c *Client) Search(query, advanced string) error {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -127,6 +130,7 @@ func (c *Client) Search(query, advanced string) error {
 	var resp *http.Response
 
 	logrus.WithField("request", req.Body).Debugln("Sending request")
+	//FIXME  : Use http.PostForm("url", url.Values{"q": query, "a":advanced}) instead
 
 	httpClient := http.Client{Transport: c.transport}
 	if resp, err = httpClient.Do(req); err != nil {
@@ -162,6 +166,7 @@ Name	Tag	Automated	Official
 {{end}}
 `
 
+// AllTags returns all existing tag for this repository instance
 func (r *Repository) AllTags() ([]string, error) {
 	return r.tagService().All(ctx)
 }
@@ -189,6 +194,7 @@ func (r *Repository) blobService() distribution.BlobService {
 	return r.bfs
 }
 
+// Image return image info for a given tag
 func (r *Repository) Image(tag string) (dg string, img *image.Image, err error) {
 
 	var tagDigest digest.Digest
@@ -196,6 +202,15 @@ func (r *Repository) Image(tag string) (dg string, img *image.Image, err error) 
 		return
 	}
 
+	dg = string(tagDigest)
+	if img, err = r.ImageFromManifest(tagDigest); err != nil {
+		logrus.WithFields(logrus.Fields{"repository": r.Named().Name()}).WithError(err).Errorln("Failed to get image")
+	}
+	return
+}
+
+// ImageFromManifest returns image inforamtion from its manifest digest
+func (r *Repository) ImageFromManifest(tagDigest digest.Digest) (img *image.Image, err error) {
 	var mService distribution.ManifestService
 	if mService, err = r.manifestService(); err != nil {
 		return
@@ -204,8 +219,8 @@ func (r *Repository) Image(tag string) (dg string, img *image.Image, err error) 
 	var mf distribution.Manifest
 	l := logrus.WithField("tagDigest", tagDigest)
 	l.Debugln("Getting manifest")
-	if mf, err = mService.Get(ctx, tagDigest, distribution.WithTag(tag)); err != nil {
-		logrus.WithFields(logrus.Fields{"repository": r.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to get manifest")
+	if mf, err = mService.Get(ctx, tagDigest); err != nil {
+		logrus.WithFields(logrus.Fields{"repository": r.Named().Name()}).WithError(err).Errorln("Failed to get manifest")
 		return
 	}
 
@@ -219,21 +234,20 @@ func (r *Repository) Image(tag string) (dg string, img *image.Image, err error) 
 	l.Debugln("Unmarshalling manifest")
 	manif := &schema2.Manifest{}
 	if err = json.Unmarshal(payload, manif); err != nil {
-		logrus.WithFields(logrus.Fields{"repository": r.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to read image manifest")
+		logrus.WithFields(logrus.Fields{"repository": r.Named().Name()}).WithError(err).Errorln("Failed to read image manifest")
 		return
 	}
 
-	dg = string(manif.Config.Digest)
 	if payload, err = r.blobService().Get(ctx, manif.Config.Digest); err != nil {
 		logrus.WithError(err).Errorln("Failed to get image config")
 		return
 	}
 
-	l.Debugln("Unmarshalling V2Image")
+	logrus.WithField("Digest", manif.Config.Digest).Debugln("Unmarshalling V2Image")
 
 	img = &image.Image{}
 	if err = json.Unmarshal(payload, img); err != nil {
-		logrus.WithFields(logrus.Fields{"repository": r.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to read image")
+		logrus.WithField("Digest", manif.Config.Digest).WithError(err).Errorln("Failed to read image")
 		return
 	}
 
@@ -251,6 +265,7 @@ func (r *Repository) getTagDigest(tag string) (digest.Digest, error) {
 
 }
 
+// DeleteImage sends a delete request on tag
 func (r *Repository) DeleteImage(tag string) error {
 	logrus.WithField("tag", tag).Debugln("Entering DeleteImage")
 	var err error

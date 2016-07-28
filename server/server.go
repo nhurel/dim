@@ -6,6 +6,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/search"
+	"github.com/docker/distribution/manifest/schema2"
+	"github.com/docker/distribution/notifications"
 	"github.com/docker/engine-api/types/registry"
 	"github.com/mailgun/manners"
 	"github.com/nhurel/dim/lib/index"
@@ -19,6 +21,7 @@ type Server struct {
 
 func NewServer(port string, index *index.Index) *Server {
 	http.HandleFunc("/v1/search", handler(index, Search))
+	http.HandleFunc("/dim/notify", handler(index, NotifyImageChange))
 	return &Server{manners.NewWithServer(&http.Server{Addr: port, Handler: http.DefaultServeMux}), index}
 }
 
@@ -30,6 +33,40 @@ func (s *Server) Run() error {
 func handler(i *index.Index, dhf DimHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		dhf(i, w, r)
+	}
+}
+
+// NotifyImageChange handles docker registry events
+func NotifyImageChange(i *index.Index, w http.ResponseWriter, r *http.Request) {
+
+	logrus.Infoln("Receiving event from registry")
+	defer r.Body.Close()
+
+	enveloppe := &notifications.Envelope{}
+
+	if err := json.NewDecoder(r.Body).Decode(enveloppe); err != nil {
+		logrus.WithError(err).Errorln("Failed to parse event")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	logrus.WithField("enveloppe", enveloppe).Debugln("Processing event")
+
+	for _, event := range enveloppe.Events {
+		if event.Target.MediaType == schema2.MediaTypeManifest {
+			switch event.Action {
+			case notifications.EventActionDelete:
+				i.DeleteImage(string(event.Target.Digest))
+			case notifications.EventActionPush:
+				if err := i.GetImageAndIndex(event.Target.Repository, event.Target.Tag, event.Target.Digest); err != nil {
+					logrus.WithField("EventTarget", event.Target).WithError(err).Errorln("Failed to reindex image")
+				}
+			default:
+				logrus.WithField("Action", event.Action).WithField("Event", event).Debugln("Event safely ignored")
+			}
+		}
 	}
 }
 
