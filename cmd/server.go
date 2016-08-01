@@ -18,7 +18,7 @@ var serverCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		handleSignal()
 
-		if len(args) == 0 {
+		if url == "" {
 			return fmt.Errorf("No registry URL given")
 		}
 
@@ -30,7 +30,7 @@ var serverCommand = &cobra.Command{
 			authConfig = &types.AuthConfig{Username: username, Password: password}
 		}
 
-		idx, err := index.New(realDir, args[0], authConfig)
+		idx, err := index.New(realDir, url, authConfig)
 		if err != nil {
 			return err
 		}
@@ -46,9 +46,6 @@ var serverCommand = &cobra.Command{
 var (
 	Port     string
 	IndexDir string
-	username string
-	password string
-	url      string
 	//secure bool
 )
 
@@ -57,8 +54,6 @@ var s *server.Server
 func init() {
 	serverCommand.Flags().StringVarP(&Port, "port", "p", "0.0.0.0:6000", "Dim listening port")
 	serverCommand.Flags().StringVar(&IndexDir, "index-path", "dim.index", "Dim listening port")
-	serverCommand.Flags().StringVar(&username, "registry-user", "", "Registry username")
-	serverCommand.Flags().StringVar(&password, "registry-password", "", "Registry password")
 	RootCommand.AddCommand(serverCommand)
 }
 

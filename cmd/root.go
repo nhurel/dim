@@ -6,6 +6,8 @@ import (
 	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"strings"
 )
 
 var RootCommand = &cobra.Command{
@@ -24,13 +26,36 @@ var RootCommand = &cobra.Command{
 		case "fatal":
 			logrus.SetLevel(logrus.FatalLevel)
 		}
+
+		u := viper.GetString("registry-url")
+		url = buildURL(u)
+
+		username = viper.GetString("registry-user")
+		password = viper.GetString("registry-password")
 	},
 }
 
 var logLevel string
+var (
+	url string
+	username string
+	password string
+	insecure bool
+)
 
 func init() {
 	RootCommand.PersistentFlags().StringVarP(&logLevel, "log", "l", "warn", "Set log level")
+	RootCommand.PersistentFlags().String("registry-url", "", "Registry URL or hostname")
+	RootCommand.PersistentFlags().String("registry-user", "", "Registry username")
+	RootCommand.PersistentFlags().String("registry-password", "", "Registry password")
+	RootCommand.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Connect ot registry through http instead of https")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-","_"))
+	viper.BindPFlag("registry-url", RootCommand.PersistentFlags().Lookup("registry-url"))
+	viper.BindPFlag("registry-user", RootCommand.PersistentFlags().Lookup("registry-user"))
+	viper.BindPFlag("registry-password", RootCommand.PersistentFlags().Lookup("registry-password"))
+	viper.BindEnv("registry-url")
+	viper.BindEnv("registry-user")
+	viper.BindEnv("registry-password")
 }
 
 var Dim = &dim.Dim{Docker: &dockerClient.DockerClient{}}
@@ -51,4 +76,17 @@ func guessTag(tagOption string, imageName string, imageTags []string, override b
 		}
 	}
 	return tag, nil
+}
+
+
+func buildURL(hostname string) string {
+	if strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://"){
+		return hostname
+	}else{
+		protocol := "https"
+		if insecure{
+			protocol = "http"
+		}
+		return fmt.Sprintf("%s://%s", protocol, hostname)
+	}
 }

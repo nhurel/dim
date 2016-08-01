@@ -35,7 +35,7 @@ var deleteCommand = &cobra.Command{
 
 			logrus.WithField("hostname", parsedName.Hostname()).Debugln("Connecting to registry")
 
-			if client, err = registry.New(authConfig, fmt.Sprintf("https://%s", parsedName.Hostname())); err != nil {
+			if client, err = registry.New(authConfig, buildURL(parsedName.Hostname())); err != nil {
 				return fmt.Errorf("Failed to connect to registry : %v", err)
 			}
 
@@ -68,7 +68,5 @@ var deleteCommand = &cobra.Command{
 
 func init() {
 	deleteCommand.Flags().BoolVarP(&RemoteFlag, "remote", "r", false, "Delete the image both locally and on the remote registry")
-	deleteCommand.Flags().StringVar(&username, "registry-user", "", "Registry username")
-	deleteCommand.Flags().StringVar(&password, "registry-password", "", "Registry password")
 	RootCommand.AddCommand(deleteCommand)
 }

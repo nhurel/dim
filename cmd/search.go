@@ -46,6 +46,5 @@ var AdvancedFlag bool
 
 func init() {
 	searchCommand.Flags().BoolVarP(&AdvancedFlag, "advanced", "a", false, "Runs complex query")
-	searchCommand.Flags().StringVar(&url, "registry-url", "", "Registry URL or hostname")
 	RootCommand.AddCommand(searchCommand)
 }
