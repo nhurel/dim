@@ -57,17 +57,19 @@ func NotifyImageChange(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	logrus.WithField("enveloppe", enveloppe).Debugln("Processing event")
 
 	for _, event := range enveloppe.Events {
-		if event.Target.MediaType == schema2.MediaTypeManifest {
-			switch event.Action {
-			case notifications.EventActionDelete:
-				i.DeleteImage(string(event.Target.Digest))
-			case notifications.EventActionPush:
+		switch event.Action {
+		case notifications.EventActionDelete:
+			i.DeleteImage(string(event.Target.Digest))
+		case notifications.EventActionPush:
+			if event.Target.MediaType == schema2.MediaTypeManifest {
 				if err := i.GetImageAndIndex(event.Target.Repository, event.Target.Tag, event.Target.Digest); err != nil {
 					logrus.WithField("EventTarget", event.Target).WithError(err).Errorln("Failed to reindex image")
 				}
-			default:
-				logrus.WithField("Action", event.Action).WithField("Event", event).Debugln("Event safely ignored")
+			} else {
+				logrus.WithField("mediatype", event.Target.MediaType).WithField("Event", event).Debugln("Event safely ignored because mediatype is unknown")
 			}
+		default:
+			logrus.WithField("Action", event.Action).WithField("Event", event).Debugln("Event safely ignored")
 		}
 	}
 }
