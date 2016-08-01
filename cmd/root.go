@@ -37,7 +37,7 @@ var RootCommand = &cobra.Command{
 
 var logLevel string
 var (
-	url string
+	url      string
 	username string
 	password string
 	insecure bool
@@ -49,7 +49,7 @@ func init() {
 	RootCommand.PersistentFlags().String("registry-user", "", "Registry username")
 	RootCommand.PersistentFlags().String("registry-password", "", "Registry password")
 	RootCommand.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Connect ot registry through http instead of https")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-","_"))
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.BindPFlag("registry-url", RootCommand.PersistentFlags().Lookup("registry-url"))
 	viper.BindPFlag("registry-user", RootCommand.PersistentFlags().Lookup("registry-user"))
 	viper.BindPFlag("registry-password", RootCommand.PersistentFlags().Lookup("registry-password"))
@@ -78,13 +78,12 @@ func guessTag(tagOption string, imageName string, imageTags []string, override b
 	return tag, nil
 }
 
-
 func buildURL(hostname string) string {
-	if strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://"){
+	if strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://") {
 		return hostname
-	}else{
+	} else {
 		protocol := "https"
-		if insecure{
+		if insecure {
 			protocol = "http"
 		}
 		return fmt.Sprintf("%s://%s", protocol, hostname)
