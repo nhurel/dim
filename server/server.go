@@ -47,10 +47,12 @@ func NotifyImageChange(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(enveloppe); err != nil {
 		logrus.WithError(err).Errorln("Failed to parse event")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		fmt.Fprintln(w, err.Error())
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Notiifcation handled !")
 
 	logrus.WithField("enveloppe", enveloppe).Debugln("Processing event")
 
