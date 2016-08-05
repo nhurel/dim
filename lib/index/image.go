@@ -5,8 +5,8 @@ import (
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/analysis/analyzers/keyword_analyzer"
 	"github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
+	"github.com/blevesearch/bleve/analysis/analyzers/standard_analyzer"
 	"github.com/blevesearch/bleve/analysis/datetime_parsers/datetime_optional"
-	"github.com/blevesearch/blevex/detect_lang"
 	"github.com/nhurel/dim/lib/registry"
 	"strings"
 	"time"
@@ -105,7 +105,7 @@ func init() {
 	imageMapping.AddFieldMappingsAt("Labels", authorMapping)
 
 	commentMapping := bleve.NewTextFieldMapping()
-	commentMapping.Analyzer = detect_lang.AnalyzerName
+	commentMapping.Analyzer = standard_analyzer.Name
 	commentMapping.IncludeInAll = true
 	commentMapping.Store = true
 	imageMapping.AddFieldMappingsAt("Comment", commentMapping)

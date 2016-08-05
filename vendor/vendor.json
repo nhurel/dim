@@ -225,18 +225,6 @@
 			"revisionTime": "2016-07-11T23:46:53Z"
 		},
 		{
-			"checksumSHA1": "Oqv3vy3yjOzQbHk5KU4OY7hy+vs=",
-			"path": "github.com/blevesearch/blevex/detect_lang",
-			"revision": "bae94f7d230f49a0ec634b80509152229713e048",
-			"revisionTime": "2016-07-11T23:48:10Z"
-		},
-		{
-			"checksumSHA1": "ELdiUdTpLAbPGedHRb/CjjC7CaY=",
-			"path": "github.com/blevesearch/cld2",
-			"revision": "10f17c049ec9b2c706118870a0f580a370217a65",
-			"revisionTime": "2015-09-16T13:05:42Z"
-		},
-		{
 			"checksumSHA1": "F6iBQThfd04TIlxT49zaPRGvlqE=",
 			"path": "github.com/blevesearch/go-porterstemmer",
 			"revision": "23a2c8e5cf1f380f27722c6d2ae8896431dc7d0e",
@@ -880,6 +868,7 @@
 		},
 		{
 			"checksumSHA1": "c8iMfP5+K3GEg26HJiO0OVVLiM4=",
+			"origin": "github.com/nhurel/dim/vendor/golang.org/x/sys/unix",
 			"path": "golang.org/x/sys/unix",
 			"revision": "f64b50fbea64174967a8882830d621a18ee1548e",
 			"revisionTime": "2016-04-14T13:31:22Z"

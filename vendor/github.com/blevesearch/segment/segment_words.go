@@ -18539,6 +18539,7 @@ const s_error int = -1
 const s_en_main int = 4862
 
 //line segment_words.rl:35
+
 func segmentWords(data []byte, maxTokens int, atEOF bool, val [][]byte, types []int) ([][]byte, []int, int, error) {
 	cs, p, pe := 0, 0, len(data)
 	cap := maxTokens
@@ -19506,6 +19507,7 @@ func segmentWords(data []byte, maxTokens int, atEOF bool, val [][]byte, types []
 	}
 
 //line segment_words.rl:278
+
 	if cs < s_first_final {
 		return val, types, totalConsumed, ParseError
 	}
