@@ -1,16 +1,15 @@
 package index
 
 import (
-	"github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
-	"github.com/blevesearch/bleve/analysis/datetime_parsers/datetime_optional"
-	"github.com/blevesearch/blevex/detect_lang"
-	"time"
-	//"github.com/docker/engine-api/types/container"
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/analysis/analyzers/keyword_analyzer"
-	"github.com/docker/docker/image"
+	"github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
+	"github.com/blevesearch/bleve/analysis/datetime_parsers/datetime_optional"
+	"github.com/blevesearch/blevex/detect_lang"
+	"github.com/nhurel/dim/lib/registry"
 	"strings"
+	"time"
 )
 
 type Image struct {
@@ -34,11 +33,11 @@ func (im Image) Type() string {
 }
 
 // Parse converts a docker image into an indexable image
-func Parse(id, name, tag string, img *image.Image) *Image {
+func Parse(name string, img *registry.Image) *Image {
 	parsed := &Image{
-		ID:      id,
+		ID:      img.Digest,
 		Name:    name,
-		Tag:     tag,
+		Tag:     img.Tag,
 		Comment: img.Comment,
 		Created: img.Created,
 		Author:  img.Author,

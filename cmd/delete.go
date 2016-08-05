@@ -31,7 +31,7 @@ var deleteCommand = &cobra.Command{
 				authConfig = &types.AuthConfig{Username: username, Password: password}
 			}
 
-			var client *registry.Client
+			var client registry.Client
 
 			logrus.WithField("hostname", parsedName.Hostname()).Debugln("Connecting to registry")
 

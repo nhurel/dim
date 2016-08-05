@@ -34,9 +34,9 @@ var serverCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if err = idx.Build(); err != nil {
-			return err
-		}
+
+		idx.Build()
+
 		s = server.NewServer(Port, idx)
 		logrus.Infoln("Server listening...")
 		return s.Run()

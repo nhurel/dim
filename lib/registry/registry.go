@@ -5,17 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/distribution"
-	"github.com/docker/distribution/digest"
-	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/registry/client"
-	"github.com/docker/docker/image"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/docker/engine-api/types"
 	reg "github.com/docker/engine-api/types/registry"
 	"github.com/howeyc/gopass"
 	"golang.org/x/net/context"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -25,23 +22,23 @@ import (
 	"text/template"
 )
 
-type Client struct {
+type Client interface {
+	client.Registry
+	NewRepository(parsedName reference.Named) (Repository, error)
+	Search(query, advanced string) error
+	WalkRepositories(repositories chan<- Repository) error
+}
+
+type RegistryClient struct {
 	client.Registry
 	transport   http.RoundTripper
 	registryUrl string
 }
 
-type Repository struct {
-	distribution.Repository
-	client *Client
-	mfs    distribution.ManifestService
-	bfs    distribution.BlobService
-}
-
 var ctx = context.Background()
 
 // Create a registry client. Handles getting right credentials from user
-func New(registryAuth *types.AuthConfig, registryUrl string) (*Client, error) {
+func New(registryAuth *types.AuthConfig, registryUrl string) (Client, error) {
 	var err error
 	var reg client.Registry
 
@@ -56,7 +53,7 @@ func New(registryAuth *types.AuthConfig, registryUrl string) (*Client, error) {
 	}
 
 	repos := make([]string, 1)
-	for _, err = reg.Repositories(ctx, repos, ""); err != nil; _, err = reg.Repositories(ctx, repos, "") {
+	for _, err = reg.Repositories(ctx, repos, ""); err != nil && err != io.EOF; _, err = reg.Repositories(ctx, repos, "") {
 		logrus.Debugln("Prompting for credentials")
 		if registryAuth == nil {
 			registryAuth = &types.AuthConfig{}
@@ -86,21 +83,21 @@ func New(registryAuth *types.AuthConfig, registryUrl string) (*Client, error) {
 		}
 	}
 
-	return &Client{reg, transport, registryUrl}, nil
+	return &RegistryClient{reg, transport, registryUrl}, nil
 }
 
 // Create a Repository object to query the registry about a specific repository
-func (c *Client) NewRepository(parsedName reference.Named) (Repository, error) {
+func (c *RegistryClient) NewRepository(parsedName reference.Named) (Repository, error) {
 	logrus.WithField("name", parsedName).Debugln("Creating new repository")
 	if repo, err := client.NewRepository(ctx, parsedName, c.registryUrl, c.transport); err != nil {
-		return Repository{}, err
+		return &RegistryRepository{}, err
 	} else {
-		return Repository{Repository: repo, client: c}, nil
+		return &RegistryRepository{Repository: repo, client: c}, nil
 	}
 }
 
 // Runs a search against the registry, handling dim advanced querying option
-func (c *Client) Search(query, advanced string) error {
+func (c *RegistryClient) Search(query, advanced string) error {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	q := strings.TrimSpace(query)
@@ -166,126 +163,48 @@ Name	Tag	Automated	Official
 {{end}}
 `
 
-// AllTags returns all existing tag for this repository instance
-func (r *Repository) AllTags() ([]string, error) {
-	return r.tagService().All(ctx)
+func (c *RegistryClient) WalkRepositories(repositories chan<- Repository) error {
+	return WalkRepositories(c, repositories)
 }
 
-func (r *Repository) tagService() distribution.TagService {
-	return r.Repository.Tags(ctx)
-}
+func WalkRepositories(c Client, repositories chan<- Repository) error {
+	var err error
 
-func (r *Repository) manifestService() (distribution.ManifestService, error) {
-	if r.mfs == nil {
-		if mService, err := r.Manifests(ctx); err != nil {
-			logrus.WithError(err).Errorln("Failed to instantiate manifestService")
-			return nil, err
-		} else {
-			r.mfs = mService
+	var n int
+	registries := make([]string, 20)
+	defer close(repositories)
+	last := ""
+	for stop := false; !stop; {
+
+		if n, err = c.Repositories(nil, registries, last); err != nil && err != io.EOF {
+			logrus.WithField("n", n).WithError(err).Errorln("Failed to get repostories")
+			return err
 		}
+
+		stop = (err == io.EOF)
+
+		for i := 0; i < n; i++ {
+			last = registries[i]
+
+			var parsedName reference.Named
+
+			l := logrus.WithField("repository", last)
+			l.Infoln("Indexing repository")
+			if parsedName, err = reference.ParseNamed(last); err != nil {
+				logrus.WithError(err).WithField("name", last).Errorln("Failed to parse repository name")
+				continue
+			}
+
+			var repository Repository
+
+			if repository, err = c.NewRepository(parsedName); err != nil {
+				logrus.WithError(err).WithField("name", last).Errorln("Failed to fetch repository info")
+				continue
+			}
+			repositories <- repository
+		}
+
 	}
-	return r.mfs, nil
-}
+	return nil
 
-func (r *Repository) blobService() distribution.BlobService {
-	if r.bfs == nil {
-		r.bfs = r.Blobs(ctx)
-	}
-	return r.bfs
-}
-
-// Image return image info for a given tag
-func (r *Repository) Image(tag string) (dg string, img *image.Image, err error) {
-
-	var tagDigest digest.Digest
-	if tagDigest, err = r.getTagDigest(tag); err != nil {
-		return
-	}
-
-	dg = string(tagDigest)
-	if img, err = r.ImageFromManifest(tagDigest); err != nil {
-		logrus.WithFields(logrus.Fields{"repository": r.Named().Name()}).WithError(err).Errorln("Failed to get image")
-	}
-	return
-}
-
-// ImageFromManifest returns image inforamtion from its manifest digest
-func (r *Repository) ImageFromManifest(tagDigest digest.Digest) (img *image.Image, err error) {
-	var mService distribution.ManifestService
-	if mService, err = r.manifestService(); err != nil {
-		return
-	}
-
-	var mf distribution.Manifest
-	l := logrus.WithField("tagDigest", tagDigest)
-	l.Debugln("Getting manifest")
-	if mf, err = mService.Get(ctx, tagDigest); err != nil {
-		logrus.WithFields(logrus.Fields{"repository": r.Named().Name()}).WithError(err).Errorln("Failed to get manifest")
-		return
-	}
-
-	l.Debugln("Reading manifest")
-	var payload []byte
-	if _, payload, err = mf.Payload(); err != nil {
-		logrus.WithError(err).Errorln("Failed to read manifest")
-		return
-	}
-
-	l.Debugln("Unmarshalling manifest")
-	manif := &schema2.Manifest{}
-	if err = json.Unmarshal(payload, manif); err != nil {
-		logrus.WithFields(logrus.Fields{"repository": r.Named().Name()}).WithError(err).Errorln("Failed to read image manifest")
-		return
-	}
-
-	if payload, err = r.blobService().Get(ctx, manif.Config.Digest); err != nil {
-		logrus.WithError(err).Errorln("Failed to get image config")
-		return
-	}
-
-	logrus.WithField("Digest", manif.Config.Digest).Debugln("Unmarshalling V2Image")
-
-	img = &image.Image{}
-	if err = json.Unmarshal(payload, img); err != nil {
-		logrus.WithField("Digest", manif.Config.Digest).WithError(err).Errorln("Failed to read image")
-		return
-	}
-
-	return
-}
-
-func (r *Repository) getTagDigest(tag string) (digest.Digest, error) {
-	var err error
-	var tDescriptor distribution.Descriptor
-	if tDescriptor, err = r.tagService().Get(ctx, tag); err != nil {
-		logrus.WithFields(logrus.Fields{"repository": r.Named().Name(), "tag": tag}).WithError(err).Errorln("Failed to get Tag")
-		return "", err
-	}
-	return tDescriptor.Digest, nil
-
-}
-
-// DeleteImage sends a delete request on tag
-func (r *Repository) DeleteImage(tag string) error {
-	logrus.WithField("tag", tag).Debugln("Entering DeleteImage")
-	var err error
-	var mfService distribution.ManifestService
-
-	var tagDigest digest.Digest
-	if tagDigest, err = r.getTagDigest(tag); err != nil {
-		return err
-	}
-
-	if mfService, err = r.manifestService(); err != nil {
-		return err
-	}
-
-	logrus.WithField("tagDigest", tagDigest).Debugln("Calling delete on manifestService")
-	return mfService.Delete(ctx, tagDigest)
-}
-
-type ImageManifest struct {
-	Name    string              `json:"name,omitempty"`
-	Tag     string              `json:"tag,omitempty"`
-	History []map[string]string `json:"history,omitempty"`
 }

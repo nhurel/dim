@@ -4,26 +4,25 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/docker/distribution/digest"
-	"github.com/docker/docker/image"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/registry"
-	"golang.org/x/net/context"
-	"io"
 	"strings"
+	"sync"
 )
 
 type Index struct {
 	bleve.Index
 	registryUrl  string
 	registryAuth *types.AuthConfig
-	regClient    *registry.Client
+	regClient    registry.Client
+	buildWg      sync.WaitGroup
 }
 
 // New create a new instance to manage a index of a given registry into a specific directory
 func New(dir string, registryUrl string, registryAuth *types.AuthConfig) (*Index, error) {
 	var i bleve.Index
-	var reg *registry.Client
+	var reg registry.Client
 	var err error
 
 	mapping := bleve.NewIndexMapping()
@@ -36,78 +35,42 @@ func New(dir string, registryUrl string, registryAuth *types.AuthConfig) (*Index
 		return nil, err
 	}
 
-	return &Index{i, registryUrl, registryAuth, reg}, nil
+	return &Index{i, registryUrl, registryAuth, reg, sync.WaitGroup{}}, nil
 }
 
 // Build creates a full index from the registry
-func (idx *Index) Build() error {
-	var err error
+func (idx *Index) Build() {
 
-	var n int
-	registries := make([]string, 20)
-	last := ""
-	for stop := false; !stop; {
+	repositories := make(chan registry.Repository, 10)
+	go idx.regClient.WalkRepositories(repositories)
 
-		if n, err = idx.regClient.Repositories(nil, registries, last); err != nil && err != io.EOF {
-			logrus.WithField("n", n).WithError(err).Errorln("Failed to get repostories")
-			return err
-		}
-		stop = (err == io.EOF)
-
-		for i := 0; i < n; i++ {
-			last = registries[i]
-
-			if err = idx.indexRepository(last, nil); err != nil {
-				return err
+	for repository := range repositories {
+		idx.buildWg.Add(1)
+		go func(repo registry.Repository) {
+			defer idx.buildWg.Done()
+			if err := idx.indexRepository(repo); err != nil {
+				logrus.WithError(err).WithField("repository", repo.Named().Name()).Errorln("An error occured while indexin repository")
 			}
-		}
-
+		}(repository)
 	}
-
-	return nil
+	idx.buildWg.Wait()
 }
 
 // indexRepository browse all tags of a given repository and index the corresponding images
-func (idx *Index) indexRepository(repo string, ctx context.Context) error {
-	var parsedName reference.Named
-	var err error
+func (idx *Index) indexRepository(repository registry.Repository) error {
+	l := logrus.WithField("repository", repository.Named().Name())
 
-	l := logrus.WithField("repository", repo)
 	l.Infoln("Indexing repository")
-	if parsedName, err = reference.ParseNamed(repo); err != nil {
-		logrus.WithError(err).WithField("name", repo).Errorln("Failed to parse repository name")
-		return err
-	}
 
-	var repository registry.Repository
+	images := make(chan *registry.Image, 10)
+	go repository.WalkImages(images)
 
-	if repository, err = idx.regClient.NewRepository(parsedName); err != nil {
-		logrus.WithError(err).WithField("name", repo).Errorln("Failed to fetch repository info")
-		return err
-	}
-
-	var tags []string
-
-	if tags, err = repository.AllTags(); err != nil {
-		logrus.WithField("repository", repository.Named().Name()).WithError(err).Errorln("Failed to get tags ")
-		return err
-	}
-
-	for _, tag := range tags {
-		l = l.WithField("tag", tag)
-		l.Debugln("Getting image details")
-
-		var img *image.Image
-		var id string
-		if id, img, err = repository.Image(tag); err != nil {
-			return err
-		}
-
-		l.WithField("image", img).Debugln("Indexing image")
-
-		go func(d, n, t string, i *image.Image) {
-			idx.IndexImage(Parse(d, n, t, i))
-		}(id, repo, tag, img)
+	for img := range images {
+		idx.buildWg.Add(1)
+		go func(n string, i *registry.Image) {
+			defer idx.buildWg.Done()
+			idx.IndexImage(Parse(n, i))
+		}(repository.Named().Name(), img)
 	}
 
 	return nil
@@ -119,11 +82,11 @@ func (idx *Index) GetImageAndIndex(repository, tag string, dg digest.Digest) err
 		logrus.WithError(err).WithField("Repository", repository).Errorln("Failed get repository info")
 		return err
 	} else {
-		if img, err := repo.ImageFromManifest(dg); err != nil {
+		if img, err := repo.ImageFromManifest(dg, tag); err != nil {
 			logrus.WithError(err).Errorln("Failed to get image info from manifest")
 			return err
 		} else {
-			idx.IndexImage(Parse(string(dg), repository, tag, img))
+			idx.IndexImage(Parse(repository, img))
 		}
 	}
 	return nil

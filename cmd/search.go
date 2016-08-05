@@ -22,7 +22,7 @@ var searchCommand = &cobra.Command{
 			authConfig = &types.AuthConfig{Username: username, Password: password}
 		}
 
-		var client *registry.Client
+		var client registry.Client
 		var err error
 
 		logrus.WithField("url", url).Debugln("Connecting to registry")

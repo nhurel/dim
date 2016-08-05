@@ -5,6 +5,7 @@ import (
 	"github.com/blevesearch/bleve"
 	. "gopkg.in/check.v1"
 	"path"
+	"sync"
 	"testing"
 	"time"
 )
@@ -75,20 +76,24 @@ func parseTime(value string) time.Time {
 	return t
 }
 
-func (s *TestSuite) SetUpSuite(c *C) {
+func MockIndex() (bleve.Index, error) {
 	logrus.SetLevel(logrus.InfoLevel)
 	dir := path.Join("test.index", time.Now().Format("20060102150405.000"))
-	var i bleve.Index
-	var err error
 
 	mapping := bleve.NewIndexMapping()
 	mapping.AddDocumentMapping("image", imageMapping)
 	mapping.DefaultField = "_all"
-	if i, err = bleve.New(dir, mapping); err != nil {
+	return bleve.New(dir, mapping)
+}
+
+func (s *TestSuite) SetUpSuite(c *C) {
+	logrus.SetLevel(logrus.InfoLevel)
+	if i, err := MockIndex(); err != nil {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
+	} else {
+		s.index = &Index{i, "", nil, nil, sync.WaitGroup{}}
 	}
-	s.index = &Index{i, "", nil, nil}
 
 	for _, image := range images {
 		if err := s.index.Index.Index(image.ID, image); err != nil {
@@ -96,10 +101,6 @@ func (s *TestSuite) SetUpSuite(c *C) {
 		}
 	}
 
-}
-
-func (s *TestSuite) SetUpTest(c *C) {
-	// Nothing
 }
 
 func (s *TestSuite) TestNameTagSearch(c *C) {
