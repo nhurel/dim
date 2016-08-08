@@ -72,6 +72,10 @@ func (d *Dim) Remove(image string) error {
 	return d.Docker.Remove(image)
 }
 
+func (d *Dim) Push(image string, auth *types.AuthConfig) error {
+	return d.Docker.Push(image, auth)
+}
+
 // TODO Implement remove labels by pattern
 func (d *Dim) RemoveLabel(parent string, labels []string, tag string) error {
 	logrus.WithFields(logrus.Fields{"parent": parent, "labels": labels}).Debugln("Entering RemoveLabel")

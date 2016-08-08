@@ -1,6 +1,7 @@
 package dockerClient
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/Sirupsen/logrus"
@@ -21,6 +22,7 @@ type Docker interface {
 	Pull(image string) error
 	Inspect(image string) (types.ImageInspect, error)
 	Remove(image string) error
+	Push(image string, auth *types.AuthConfig) error
 }
 
 type DockerClient struct {
@@ -82,7 +84,8 @@ func (dc *DockerClient) Pull(image string) error {
 		return err
 	}
 
-	resp, err := c.ImagePull(context.Background(), image, types.ImagePullOptions{})
+	var resp io.ReadCloser
+	resp, err = c.ImagePull(context.Background(), image, types.ImagePullOptions{})
 
 	if resp != nil {
 		defer resp.Close()
@@ -95,11 +98,48 @@ func (dc *DockerClient) Pull(image string) error {
 	}
 
 	return err
-
 }
 
 type PullStream struct {
 	Status string `json:"status,omitempty"`
+}
+
+func (dc *DockerClient) Push(image string, auth *types.AuthConfig) error {
+	logrus.WithField("image", image).Debugln("Pushing image")
+	var c *client.Client
+	var err error
+	if c, err = dc.Client(); err != nil {
+		logrus.WithError(err).Fatalln("Error occured while connecting to docker daemon")
+		return err
+	}
+
+	var a string
+	if a, err = EncodeAuthToBase64(*auth); err != nil {
+		return err
+	}
+	var resp io.ReadCloser
+	resp, err = c.ImagePush(context.Background(), image, types.ImagePushOptions{RegistryAuth: a})
+
+	if resp != nil {
+		defer resp.Close()
+		fmt.Print("Pushing image...")
+		dec := json.NewDecoder(resp)
+		for dec.More() {
+			dec.Decode(struct{}{})
+			fmt.Print(".")
+		}
+		fmt.Println(".")
+	}
+
+	return err
+}
+
+func EncodeAuthToBase64(authConfig types.AuthConfig) (string, error) {
+	buf, err := json.Marshal(authConfig)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(buf), nil
 }
 
 // Inspect return all details of an image
