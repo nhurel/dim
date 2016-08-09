@@ -19,10 +19,11 @@ type Image struct {
 	Comment      string
 	Created      time.Time
 	Author       string
-	Labels       map[string]interface{}
+	Labels       map[string]string
 	Volumes      []string
 	ExposedPorts []int
 	Env          map[string]string
+	Size         int64
 	//Config *container.Config
 
 }
@@ -42,16 +43,8 @@ func Parse(name string, img *registry.Image) *Image {
 		Created: img.Created,
 		Author:  img.Author,
 	}
-	labels := make(map[string]interface{}, len(img.Config.Labels))
-	for _, iLabel := range img.Config.Labels {
-		split := strings.Split(iLabel, "=") // TODO Use regexp for better label handling
-		if len(split) > 1 {
-			labels[split[0]] = split[1]
-		} else {
-			labels[split[0]] = true
-		}
-	}
-	parsed.Labels = labels
+
+	parsed.Labels = img.Config.Labels
 
 	volumes := make([]string, 0, len(img.Config.Volumes))
 	for v, _ := range img.Config.Volumes {
@@ -67,6 +60,14 @@ func Parse(name string, img *registry.Image) *Image {
 		}
 	}
 	parsed.Env = envs
+
+	ports := make([]int, 0, len(img.Config.ExposedPorts))
+	for p, _ := range img.Config.ExposedPorts {
+		ports = append(ports, p.Int())
+	}
+	parsed.ExposedPorts = ports
+
+	parsed.Size = img.Size
 
 	logrus.WithField("image", parsed).Debugln("Docker image parsed")
 	return parsed
@@ -120,6 +121,7 @@ func init() {
 	portsMapping.Store = false
 	portsMapping.IncludeInAll = false
 	imageMapping.AddFieldMappingsAt("ExposedPorts", portsMapping)
+	imageMapping.AddFieldMappingsAt("Size", portsMapping)
 
 	imageMapping.DefaultAnalyzer = simple_analyzer.Name
 

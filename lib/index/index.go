@@ -105,6 +105,8 @@ func (idx *Index) DeleteImage(id string) {
 }
 
 func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {
+	l := logrus.WithFields(logrus.Fields{"nameTag": nameTag, "advanced": advanced})
+	l.Debugln("Building query clause")
 	bq := make([]bleve.Query, 0, 3)
 
 	name := nameTag
@@ -116,10 +118,12 @@ func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {
 	}
 
 	if nameTag != "" {
+		l.WithFields(logrus.Fields{"name": name, "tag": tag}).Debugln("Adding name and tag clauses")
 		bq = append(bq, bleve.NewFuzzyQuery(name).SetField("Name"), bleve.NewMatchQuery(tag).SetField("Tag"))
 	}
 
 	if advanced != "" {
+		l.Debugln("Adding advanced clause")
 		bq = append(bq, bleve.NewQueryStringQuery(advanced))
 	}
 

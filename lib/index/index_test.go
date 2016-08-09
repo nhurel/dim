@@ -26,7 +26,7 @@ var (
 			Name:    "centos",
 			Tag:     "centos6",
 			Created: parseTime("2016-07-24T09:05:06"),
-			Labels: map[string]interface{}{
+			Labels: map[string]string{
 				"type":   "base",
 				"family": "rhel",
 			},
@@ -36,7 +36,7 @@ var (
 			Name:    "httpd",
 			Tag:     "2.4",
 			Created: parseTime("2016-06-23T09:05:06"),
-			Labels: map[string]interface{}{
+			Labels: map[string]string{
 				"type":      "web",
 				"family":    "debian",
 				"framework": "apache-httpd",
@@ -55,7 +55,7 @@ var (
 			Name:    "mysql",
 			Tag:     "5.7",
 			Created: parseTime("2016-06-30T09:05:06"),
-			Labels: map[string]interface{}{
+			Labels: map[string]string{
 				"type":      "sql",
 				"family":    "debian",
 				"framework": "mysql",

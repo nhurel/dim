@@ -102,6 +102,7 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	}
 
 	results := registry.SearchResults{NumResults: int(sr.Total), Query: q}
+	logrus.WithField("#results", results.NumResults).Debugln("Found results")
 	images := make([]registry.SearchResult, 0, sr.Total)
 	for _, h := range sr.Hits {
 		images = append(images, documentToSearchResult(h))
