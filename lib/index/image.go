@@ -1,6 +1,7 @@
 package index
 
 import (
+	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/analysis/analyzers/keyword_analyzer"
@@ -16,6 +17,7 @@ import (
 type Image struct {
 	ID           string
 	Name         string
+	FullName     string
 	Tag          string
 	Comment      string
 	Created      time.Time
@@ -46,6 +48,7 @@ func Parse(name string, img *registry.Image) *Image {
 		Created: img.Created,
 		Author:  img.Author,
 	}
+	parsed.FullName = fmt.Sprintf("%s:%s", name, img.Tag)
 
 	parsed.Label = img.Config.Labels
 	parsed.Labels = dim.Keys(img.Config.Labels)
@@ -95,12 +98,14 @@ func init() {
 	nameMapping.IncludeInAll = true
 	nameMapping.Store = true
 	imageMapping.AddFieldMappingsAt("Name", nameMapping)
+	imageMapping.AddFieldMappingsAt("FullName", nameMapping)
 
-	disabledFieldMapping := bleve.NewTextFieldMapping()
-	disabledFieldMapping.Store = false
-	disabledFieldMapping.IncludeInAll = false
-	disabledFieldMapping.Index = false
-	imageMapping.AddFieldMappingsAt("ID", disabledFieldMapping)
+	idMapping := bleve.NewTextFieldMapping()
+	idMapping.Analyzer = keyword_analyzer.Name
+	idMapping.Store = true
+	idMapping.IncludeInAll = false
+	idMapping.Index = true
+	imageMapping.AddFieldMappingsAt("ID", idMapping)
 
 	authorMapping := bleve.NewTextFieldMapping()
 	authorMapping.Analyzer = simple_analyzer.Name

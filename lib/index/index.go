@@ -94,14 +94,32 @@ func (idx *Index) GetImageAndIndex(repository, tag string, dg digest.Digest) err
 
 // IndexImage adds a given image into the index
 func (idx *Index) IndexImage(image *Image) {
-	logrus.WithField("imageID", image.ID).Debugln("Indexing image")
-	idx.Index.Index(image.ID, image)
+	logrus.WithFields(logrus.Fields{"imageID": image.ID, "image.FullName": image.FullName}).Debugln("Indexing image")
+	idx.Index.Index(image.FullName, image)
 }
 
 // IndexImage adds a given image into the index
 func (idx *Index) DeleteImage(id string) {
-	logrus.WithField("imageID", id).Debugln("Removing image from index")
-	idx.Index.Delete(id)
+	l := logrus.WithField("imageID", id)
+	l.Debugln("Removing image from index")
+	q := bleve.NewTermQuery(id).SetField("ID")
+	rq := bleve.NewSearchRequest(q)
+	rq.Fields = []string{"FullName"}
+	var sr *bleve.SearchResult
+	var err error
+	if sr, err = idx.Search(rq); err != nil || sr.Total == 0 {
+		l.WithError(err).WithField("#hits", sr.Total).Errorln("Failed to get image id to remove from index")
+		return
+	}
+	if sr.Total > 1 {
+		l.WithField("#hits", sr.Total).Warnln("Removing multiple images from index for this imageID")
+		return
+	}
+
+	for _, h := range sr.Hits {
+		l.WithField("image.FullName", h.Fields["FullName"].(string)).Infoln("Removing image from index")
+		idx.Index.Delete(h.Fields["FullName"].(string))
+	}
 }
 
 func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {

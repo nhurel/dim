@@ -47,12 +47,14 @@ var img = &registry.Image{
 			Size: int64(2048),
 		},
 	},
+	Tag:    "latest",
 	Digest: "imageDigest",
 }
 
 func (s *ImageTestSuite) TestParse(c *C) {
 	parsed := Parse("httpd", img)
 	c.Assert(parsed.ExposedPorts, HasLen, 2)
+	c.Assert(parsed.FullName, Equals, "httpd:latest")
 	c.Assert(SliceContains(parsed.ExposedPorts, 80), Equals, true)
 	c.Assert(SliceContains(parsed.ExposedPorts, 443), Equals, true)
 	c.Assert(parsed.Author, Equals, img.Author)
