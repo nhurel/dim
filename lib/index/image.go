@@ -7,6 +7,7 @@ import (
 	"github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
 	"github.com/blevesearch/bleve/analysis/analyzers/standard_analyzer"
 	"github.com/blevesearch/bleve/analysis/datetime_parsers/datetime_optional"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/registry"
 	"strings"
 	"time"
@@ -19,10 +20,12 @@ type Image struct {
 	Comment      string
 	Created      time.Time
 	Author       string
-	Labels       map[string]string
+	Label        map[string]string
+	Labels       []string
 	Volumes      []string
 	ExposedPorts []int
 	Env          map[string]string
+	Envs         []string
 	Size         int64
 	//Config *container.Config
 
@@ -44,7 +47,8 @@ func Parse(name string, img *registry.Image) *Image {
 		Author:  img.Author,
 	}
 
-	parsed.Labels = img.Config.Labels
+	parsed.Label = img.Config.Labels
+	parsed.Labels = dim.Keys(img.Config.Labels)
 
 	volumes := make([]string, 0, len(img.Config.Volumes))
 	for v, _ := range img.Config.Volumes {
@@ -60,6 +64,7 @@ func Parse(name string, img *registry.Image) *Image {
 		}
 	}
 	parsed.Env = envs
+	parsed.Envs = dim.Keys(envs)
 
 	ports := make([]int, 0, len(img.Config.ExposedPorts))
 	for p, _ := range img.Config.ExposedPorts {
@@ -104,6 +109,9 @@ func init() {
 	imageMapping.AddFieldMappingsAt("Author", authorMapping)
 	imageMapping.AddFieldMappingsAt("Volumes", authorMapping)
 	imageMapping.AddFieldMappingsAt("Labels", authorMapping)
+	imageMapping.AddFieldMappingsAt("Label", authorMapping)
+	imageMapping.AddFieldMappingsAt("Envs", authorMapping)
+	imageMapping.AddFieldMappingsAt("Env", authorMapping)
 
 	commentMapping := bleve.NewTextFieldMapping()
 	commentMapping.Analyzer = standard_analyzer.Name

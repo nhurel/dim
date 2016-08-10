@@ -53,11 +53,12 @@ var img = &registry.Image{
 func (s *ImageTestSuite) TestParse(c *C) {
 	parsed := Parse("httpd", img)
 	c.Assert(parsed.ExposedPorts, HasLen, 2)
-	c.Assert(parsed.ExposedPorts[0], Equals, 80)
-	c.Assert(parsed.ExposedPorts[1], Equals, 443)
+	c.Assert(SliceContains(parsed.ExposedPorts, 80), Equals, true)
+	c.Assert(SliceContains(parsed.ExposedPorts, 443), Equals, true)
 	c.Assert(parsed.Author, Equals, img.Author)
 	c.Assert(parsed.Comment, Equals, img.Comment)
 	c.Assert(parsed.ID, Equals, img.Digest)
+	c.Assert(parsed.Envs, HasLen, 4)
 	c.Assert(parsed.Env, HasLen, 4)
 	c.Assert(parsed.Env["PATH"], Equals, "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/apache2/bin")
 	c.Assert(parsed.Env["HTTPD_PREFIX"], Equals, "usr/local/apache2")
@@ -66,8 +67,18 @@ func (s *ImageTestSuite) TestParse(c *C) {
 	c.Assert(parsed.Volumes, HasLen, 1)
 	c.Assert(parsed.Volumes[0], Equals, "/var/www/html")
 	c.Assert(parsed.Labels, HasLen, 3)
-	c.Assert(parsed.Labels["label1"], Equals, "value1")
-	c.Assert(parsed.Labels["label2.three.levels"], Equals, "value2")
-	c.Assert(parsed.Labels["label3_2levels"], Equals, "value3")
+	c.Assert(parsed.Label, HasLen, 3)
+	c.Assert(parsed.Label["label1"], Equals, "value1")
+	c.Assert(parsed.Label["label2.three.levels"], Equals, "value2")
+	c.Assert(parsed.Label["label3_2levels"], Equals, "value3")
 	c.Assert(parsed.Size, Equals, img.Size)
+}
+
+func SliceContains(s []int, c int) bool {
+	for _, e := range s {
+		if e == c {
+			return true
+		}
+	}
+	return false
 }

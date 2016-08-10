@@ -26,9 +26,13 @@ var (
 			Name:    "centos",
 			Tag:     "centos6",
 			Created: parseTime("2016-07-24T09:05:06"),
-			Labels: map[string]string{
+			Label: map[string]string{
 				"type":   "base",
 				"family": "rhel",
+			},
+			Labels: []string{
+				"type",
+				"family",
 			},
 		},
 		Image{
@@ -36,10 +40,15 @@ var (
 			Name:    "httpd",
 			Tag:     "2.4",
 			Created: parseTime("2016-06-23T09:05:06"),
-			Labels: map[string]string{
+			Label: map[string]string{
 				"type":      "web",
 				"family":    "debian",
 				"framework": "apache-httpd",
+			},
+			Labels: []string{
+				"type",
+				"family",
+				"framework",
 			},
 			Volumes: []string{"/var/www/html"},
 			Env: map[string]string{
@@ -55,10 +64,15 @@ var (
 			Name:    "mysql",
 			Tag:     "5.7",
 			Created: parseTime("2016-06-30T09:05:06"),
-			Labels: map[string]string{
+			Label: map[string]string{
 				"type":      "sql",
 				"family":    "debian",
 				"framework": "mysql",
+			},
+			Labels: []string{
+				"type",
+				"family",
+				"framework",
 			},
 			Volumes: []string{"/var/lib/mysql"},
 			Env: map[string]string{
@@ -145,8 +159,11 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 		{"Tag:5.7", []string{"mysql"}},
 		{"Env.MYSQL_VERSION:5.7.9-1debian8", []string{"mysql"}},
 		{"Env.MYSQL_VERSION:5.7.9", []string{"mysql"}},
-		{"Labels.family:debian", []string{"httpd", "mysql"}},
-		{"Labels.type:base", []string{"centos"}},
+		{"Label.family:debian", []string{"httpd", "mysql"}},
+		{"Label.type:base", []string{"centos"}},
+		{"Labels:type", []string{"centos", "httpd", "mysql"}},
+		{"Labels:/frame.*/", []string{"httpd", "mysql"}},
+		{"Labels:frame*", []string{"httpd", "mysql"}},
 		{"Env.HTTPD_VERSION:2*", []string{"httpd"}},
 		{"Env.HTTPD_VERSION:2.*", []string{"httpd"}},
 		{"Env.HTTPD_VERSION:/*/", []string{"httpd"}},

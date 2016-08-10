@@ -58,3 +58,11 @@ func MapMatchesAll(all, search map[string]string) bool {
 	return false
 
 }
+
+func Keys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k, _ := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
