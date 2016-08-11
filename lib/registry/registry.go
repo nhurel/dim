@@ -154,7 +154,7 @@ func (c *RegistryClient) Search(query, advanced string) error {
 
 	} else {
 		b, _ = ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("Server returned an error", string(b))
+		return fmt.Errorf("Server returned an error : %s", string(b))
 	}
 	return nil
 

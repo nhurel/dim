@@ -29,18 +29,15 @@ type NoOpRegistryClient struct {
 }
 
 func (r *NoOpRegistryClient) Repositories(ctx context.Context, repos []string, last string) (int, error) {
-	fmt.Println("Repositories()")
 	repos[0] = "httpd"
 	repos[1] = "mysql"
 	return 2, io.EOF
 }
 
 func (r *NoOpRegistryClient) NewRepository(parsedName reference.Named) (registry.Repository, error) {
-	fmt.Println("NewRepository")
 	return &NoOpRegistryRepository{name: parsedName.Name()}, nil
 }
 func (r *NoOpRegistryClient) Search(query, advanced string) error {
-	fmt.Println("Search()")
 	return nil
 }
 
@@ -54,7 +51,6 @@ type NoOpRegistryRepository struct {
 }
 
 func (r *NoOpRegistryRepository) AllTags() ([]string, error) {
-	fmt.Println("AllTags(%s)", r.name)
 	switch r.name {
 	case "httpd":
 		return []string{"2.2", "2.4"}, nil
@@ -65,18 +61,15 @@ func (r *NoOpRegistryRepository) AllTags() ([]string, error) {
 	}
 }
 func (r *NoOpRegistryRepository) Image(tag string) (img *registry.Image, err error) {
-	fmt.Println("Image(%s:%s)", r.name, tag)
 	dg := fmt.Sprintf("%s:%s", r.name, tag)
 	img = repoImages[dg]
 	err = nil
 	return
 }
 func (r *NoOpRegistryRepository) ImageFromManifest(tagDigest digest.Digest, digest string) (img *registry.Image, err error) {
-	fmt.Println("ImageFromManifest()")
 	return nil, nil
 }
 func (r *NoOpRegistryRepository) DeleteImage(tag string) error {
-	fmt.Println("DeleteImage()")
 	return nil
 }
 
@@ -151,10 +144,7 @@ func (s *RegistrySuite) TearDownSuite(c *C) {
 }
 
 func (s *RegistrySuite) TestBuild(c *C) {
-	fmt.Println("STARTING TEST")
 	s.index.Build()
-	// TODO remove sleep and use waitgroup
-	//time.Sleep(50 * time.Millisecond)
 	fmt.Println("INDEX BUILT")
 	srq := bleve.NewSearchRequest(bleve.NewMatchAllQuery())
 	srs, err := s.index.Search(srq)
