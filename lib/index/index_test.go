@@ -52,10 +52,10 @@ var (
 			},
 			Volumes: []string{"/var/www/html"},
 			Env: map[string]string{
-				"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/apache2/bin",
-				"HTTPD_PREFIX":                        "/usr/local/apache2",
-				"HTTPD_VERSION":                       "2.4.18",
-				"HTTPD_BZ2_URL":                       "https://www.apache.org/dist/httpd/httpd-2.4.18.tar.bz2",
+				"PATH":          "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/apache2/bin",
+				"HTTPD_PREFIX":  "/usr/local/apache2",
+				"HTTPD_VERSION": "2.4.18",
+				"HTTPD_BZ2_URL": "https://www.apache.org/dist/httpd/httpd-2.4.18.tar.bz2",
 			},
 			Envs: []string{
 				"PATH",

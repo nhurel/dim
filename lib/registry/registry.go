@@ -42,6 +42,10 @@ func New(registryAuth *types.AuthConfig, registryUrl string) (Client, error) {
 	var err error
 	var reg client.Registry
 
+	if registryUrl == "" {
+		return nil, fmt.Errorf("No registry URL given")
+	}
+
 	transport := http.DefaultTransport
 
 	if registryAuth != nil {

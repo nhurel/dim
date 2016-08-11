@@ -7,8 +7,8 @@ import (
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"strings"
 	"os"
+	"strings"
 )
 
 var RootCommand = &cobra.Command{
@@ -62,7 +62,7 @@ func init() {
 	viper.SetConfigName("dim")
 	viper.AddConfigPath("$HOME/.dim")
 	viper.AddConfigPath(".")
-	if err:=viper.ReadInConfig(); err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		switch err.(type) {
 		case *os.PathError:
 			logrus.WithError(err).Debugln("No config file found")
@@ -70,7 +70,6 @@ func init() {
 			logrus.WithError(err).Fatalln("Failed to read config file")
 		}
 	}
-
 
 }
 
@@ -95,6 +94,9 @@ func guessTag(tagOption string, imageName string, imageTags []string, override b
 }
 
 func buildURL(hostname string) string {
+	if hostname == "" {
+		return ""
+	}
 	if strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://") {
 		return hostname
 	} else {
