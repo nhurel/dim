@@ -114,8 +114,10 @@ func init() {
 	imageMapping.AddFieldMappingsAt("Author", authorMapping)
 	imageMapping.AddFieldMappingsAt("Volumes", authorMapping)
 	imageMapping.AddFieldMappingsAt("Labels", authorMapping)
+	imageMapping.AddFieldMappingsAt("Labels", idMapping)
 	imageMapping.AddFieldMappingsAt("Label", authorMapping)
 	imageMapping.AddFieldMappingsAt("Envs", authorMapping)
+	imageMapping.AddFieldMappingsAt("Envs", idMapping)
 	imageMapping.AddFieldMappingsAt("Env", authorMapping)
 
 	commentMapping := bleve.NewTextFieldMapping()
@@ -137,7 +139,5 @@ func init() {
 	imageMapping.AddFieldMappingsAt("Size", portsMapping)
 
 	imageMapping.DefaultAnalyzer = simple_analyzer.Name
-
-	// FIXME: how should be indexed collections ?
 
 }

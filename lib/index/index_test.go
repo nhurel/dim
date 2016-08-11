@@ -52,10 +52,16 @@ var (
 			},
 			Volumes: []string{"/var/www/html"},
 			Env: map[string]string{
-				"PATH=/usr/local/sbin:/usr/local/bin": "/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/apache2/bin",
+				"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/apache2/bin",
 				"HTTPD_PREFIX":                        "/usr/local/apache2",
 				"HTTPD_VERSION":                       "2.4.18",
 				"HTTPD_BZ2_URL":                       "https://www.apache.org/dist/httpd/httpd-2.4.18.tar.bz2",
+			},
+			Envs: []string{
+				"PATH",
+				"HTTPD_PREFIX",
+				"HTTPD_VERSION",
+				"HTTPD_BZ2_URL",
 			},
 			ExposedPorts: []int{80, 443},
 		},
@@ -79,6 +85,11 @@ var (
 				"PATH":          "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 				"MYSQL_MAJOR":   "5.7",
 				"MYSQL_VERSION": "5.7.9-1debian8",
+			},
+			Envs: []string{
+				"PATH",
+				"MYSQL_MAJOR",
+				"MYSQL_VERSION",
 			},
 			ExposedPorts: []int{3306},
 		},
@@ -167,6 +178,8 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 		{"Env.HTTPD_VERSION:2*", []string{"httpd"}},
 		{"Env.HTTPD_VERSION:2.*", []string{"httpd"}},
 		{"Env.HTTPD_VERSION:/*/", []string{"httpd"}},
+		{"Envs:HTTPD_PREFIX", []string{"httpd"}},
+		{"Envs:HTTP*", []string{"httpd"}},
 		{"apache", []string{"httpd"}},
 	}
 
