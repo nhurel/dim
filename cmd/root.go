@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"strings"
+	"os"
 )
 
 var RootCommand = &cobra.Command{
@@ -56,6 +57,21 @@ func init() {
 	viper.BindEnv("registry-url")
 	viper.BindEnv("registry-user")
 	viper.BindEnv("registry-password")
+
+	viper.SetConfigType("yaml")
+	viper.SetConfigName("dim")
+	viper.AddConfigPath("$HOME/.dim")
+	viper.AddConfigPath(".")
+	if err:=viper.ReadInConfig(); err != nil {
+		switch err.(type) {
+		case *os.PathError:
+			logrus.WithError(err).Debugln("No config file found")
+		default:
+			logrus.WithError(err).Fatalln("Failed to read config file")
+		}
+	}
+
+
 }
 
 var Dim = &dim.Dim{Docker: &dockerClient.DockerClient{}}
