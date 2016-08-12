@@ -32,7 +32,7 @@ var searchCommand = &cobra.Command{
 		}
 
 		var q, a string
-		if AdvancedFlag {
+		if advancedFlag {
 			a = query
 		} else {
 			q = query
@@ -42,9 +42,9 @@ var searchCommand = &cobra.Command{
 	},
 }
 
-var AdvancedFlag bool
+var advancedFlag bool
 
 func init() {
-	searchCommand.Flags().BoolVarP(&AdvancedFlag, "advanced", "a", false, "Runs complex query")
+	searchCommand.Flags().BoolVarP(&advancedFlag, "advanced", "a", false, "Runs complex query")
 	RootCommand.AddCommand(searchCommand)
 }

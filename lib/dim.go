@@ -11,10 +11,12 @@ import (
 	"text/template"
 )
 
+// Dim is the client type that handle all client side interaction with docker daemon
 type Dim struct {
 	Docker dockerClient.Docker
 }
 
+// AddLabel applies the given labels to the parent and tag the new created image with the given tag
 func (d *Dim) AddLabel(parent string, labels []string, tag string) error {
 	logrus.WithFields(logrus.Fields{"parent": parent, "labels": labels}).Debugln("Entering AddLabel")
 
@@ -34,17 +36,20 @@ func (d *Dim) AddLabel(parent string, labels []string, tag string) error {
 		buildLabels[kv[0]] = kv[1]
 	}
 
-	if actualLabels, err := d.GetImageLabels(parent); err != nil {
+	var actualLabels map[string]string
+	var err error
+	if actualLabels, err = d.GetImageLabels(parent); err != nil {
 		return err
-	} else {
-		if MapMatchesAll(actualLabels, buildLabels) {
-			return fmt.Errorf("Image %s already contains the label(s) you want to set", parent)
-		}
+	}
+
+	if MapMatchesAll(actualLabels, buildLabels) {
+		return fmt.Errorf("Image %s already contains the label(s) you want to set", parent)
 	}
 
 	return d.Docker.ImageBuild(parent, buildLabels, tag)
 }
 
+// Pull pulls the given image (must be fully qualified)
 func (d *Dim) Pull(image string) error {
 	return d.Docker.Pull(image)
 }
@@ -59,6 +64,7 @@ func (d *Dim) GetImageInfo(image string) (string, []string, error) {
 	return i.ID, i.RepoTags, err
 }
 
+//GetImageLabels returns all the labels of a given image
 func (d *Dim) GetImageLabels(image string) (map[string]string, error) {
 	i, err := d.Docker.Inspect(image)
 	if err != nil {
@@ -68,14 +74,17 @@ func (d *Dim) GetImageLabels(image string) (map[string]string, error) {
 	return i.ContainerConfig.Labels, err
 }
 
+//Remove deletes an image locally
 func (d *Dim) Remove(image string) error {
 	return d.Docker.Remove(image)
 }
 
+// Push pushes an image to a registry
 func (d *Dim) Push(image string, auth *types.AuthConfig) error {
 	return d.Docker.Push(image, auth)
 }
 
+// RemoveLabel clear the given labels to image parent and applies the fiven tag to the newly bulit image. Labels cannot be deleted so their value is only reset to an empty string
 // TODO Implement remove labels by pattern
 func (d *Dim) RemoveLabel(parent string, labels []string, tag string) error {
 	logrus.WithFields(logrus.Fields{"parent": parent, "labels": labels}).Debugln("Entering RemoveLabel")

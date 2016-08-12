@@ -22,7 +22,7 @@ var serverCommand = &cobra.Command{
 			return fmt.Errorf("No registry URL given")
 		}
 
-		realDir := path.Join(IndexDir, time.Now().Format("20060102150405.000"))
+		realDir := path.Join(indexDir, time.Now().Format("20060102150405.000"))
 		logrus.Warnf("Creating index dir at %s\n", realDir)
 
 		var authConfig *types.AuthConfig
@@ -37,23 +37,23 @@ var serverCommand = &cobra.Command{
 
 		idx.Build()
 
-		s = server.NewServer(Port, idx)
+		s = server.NewServer(port, idx)
 		logrus.Infoln("Server listening...")
 		return s.Run()
 	},
 }
 
 var (
-	Port     string
-	IndexDir string
+	port     string
+	indexDir string
 	//secure bool
 )
 
 var s *server.Server
 
 func init() {
-	serverCommand.Flags().StringVarP(&Port, "port", "p", "0.0.0.0:6000", "Dim listening port")
-	serverCommand.Flags().StringVar(&IndexDir, "index-path", "dim.index", "Dim listening port")
+	serverCommand.Flags().StringVarP(&port, "port", "p", "0.0.0.0:6000", "Dim listening port")
+	serverCommand.Flags().StringVar(&indexDir, "index-path", "dim.index", "Dim listening port")
 	RootCommand.AddCommand(serverCommand)
 }
 

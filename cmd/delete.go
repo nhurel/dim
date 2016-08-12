@@ -19,7 +19,7 @@ var deleteCommand = &cobra.Command{
 
 		Dim.Remove(image)
 
-		if RemoteFlag {
+		if remoteFlag {
 			var parsedName reference.Named
 			var err error
 			if parsedName, err = reference.ParseNamed(image); err != nil || parsedName.Hostname() == "" {
@@ -67,6 +67,6 @@ var deleteCommand = &cobra.Command{
 }
 
 func init() {
-	deleteCommand.Flags().BoolVarP(&RemoteFlag, "remote", "r", false, "Delete the image both locally and on the remote registry")
+	deleteCommand.Flags().BoolVarP(&remoteFlag, "remote", "r", false, "Delete the image both locally and on the remote registry")
 	RootCommand.AddCommand(deleteCommand)
 }

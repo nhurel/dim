@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+// RootCommand is the main cobraCommand all other commands are attached to
 var RootCommand = &cobra.Command{
 	Use:   "dim",
 	Short: "Docker Image Management is a simple cli to manage docker images",
@@ -73,6 +74,7 @@ func init() {
 
 }
 
+// Dim instance has a dockerClient object to interact with docker daemon
 var Dim = &dim.Dim{Docker: &dockerClient.DockerClient{}}
 
 // GuessTag returns the tag to apply to the image to build
@@ -99,11 +101,12 @@ func buildURL(hostname string) string {
 	}
 	if strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://") {
 		return hostname
-	} else {
-		protocol := "https"
-		if insecure {
-			protocol = "http"
-		}
-		return fmt.Sprintf("%s://%s", protocol, hostname)
 	}
+
+	protocol := "https"
+	if insecure {
+		protocol = "http"
+	}
+	return fmt.Sprintf("%s://%s", protocol, hostname)
+
 }

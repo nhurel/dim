@@ -14,17 +14,20 @@ import (
 	"net/http"
 )
 
+// Server type handle  indecation of a docker registry and serves the search endpoint
 type Server struct {
 	*manners.GracefulServer
 	index *index.Index
 }
 
+// NewServer creates a new Server instance to listen on given port and use given index
 func NewServer(port string, index *index.Index) *Server {
 	http.HandleFunc("/v1/search", handler(index, Search))
 	http.HandleFunc("/dim/notify", handler(index, NotifyImageChange))
 	return &Server{manners.NewWithServer(&http.Server{Addr: port, Handler: http.DefaultServeMux}), index}
 }
 
+// Run starts the server instance
 func (s *Server) Run() error {
 	return s.ListenAndServe()
 }
@@ -123,5 +126,5 @@ func documentToSearchResult(h *search.DocumentMatch) registry.SearchResult {
 	return result
 }
 
-// Use to inject index into a HandlerFunc function
+// DimHandlerFunc injects index into a HandlerFunc function
 type DimHandlerFunc func(i *index.Index, w http.ResponseWriter, r *http.Request)

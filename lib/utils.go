@@ -59,9 +59,10 @@ func MapMatchesAll(all, search map[string]string) bool {
 
 }
 
+// Keys returns all the keys of the given map
 func Keys(m map[string]string) []string {
 	keys := make([]string, 0, len(m))
-	for k, _ := range m {
+	for k := range m {
 		keys = append(keys, k)
 	}
 	return keys
