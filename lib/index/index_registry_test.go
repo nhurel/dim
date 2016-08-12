@@ -83,40 +83,40 @@ func (r *NoOpRegistryRepository) Named() ref.Named {
 
 var repoImages = map[string]*registry.Image{
 	"httpd:2.2": &registry.Image{
-		&image.Image{
+		Image: &image.Image{
 			V1Image: image.V1Image{
 				Config: &container.Config{},
 			},
 		},
-		"2.2",
-		"httpd:2.2",
+		Tag:    "2.2",
+		Digest: "httpd:2.2",
 	},
 	"httpd:2.4": &registry.Image{
-		&image.Image{
+		Image: &image.Image{
 			V1Image: image.V1Image{
 				Config: &container.Config{},
 			},
 		},
-		"2.4",
-		"httpd:2.4",
+		Tag:    "2.4",
+		Digest: "httpd:2.4",
 	},
 	"mysql:5.5": &registry.Image{
-		&image.Image{
+		Image: &image.Image{
 			V1Image: image.V1Image{
 				Config: &container.Config{},
 			},
 		},
-		"5.5",
-		"mysql:5.5",
+		Tag:    "5.5",
+		Digest: "mysql:5.5",
 	},
 	"mysql:5.7": &registry.Image{
-		&image.Image{
+		Image: &image.Image{
 			V1Image: image.V1Image{
 				Config: &container.Config{},
 			},
 		},
-		"5.7",
-		"mysql:5.7",
+		Tag:    "5.7",
+		Digest: "mysql:5.7",
 	},
 }
 
