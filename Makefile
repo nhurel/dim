@@ -11,7 +11,7 @@ SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
 
 #LDFLAGS=-ldflags "-X github.com/ariejan/roll/core.Version=${VERSION} -X github.com/ariejan/roll/core.BuildTime=${BUILD_TIME}"
 
-.DEFAULT_GOAL: $(BINARY)
+default: $(BINARY)
 
 all: clean fmt lint vet test build docker install
 
