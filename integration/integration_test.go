@@ -100,3 +100,29 @@ func (s *IntegrationTestSuite) TestUnlabelAndSearch(c *C) {
 		c.Assert(re.MatchString(string(result)), Equals, true)
 	}
 }
+
+func (s *IntegrationTestSuite) TestDeleteAndSearch(c *C) {
+	if err := s.Dim.AddLabel("httpd:2.4-alpine", integration_label.labels, integration_label.tag); err != nil {
+		c.Error(err)
+	}
+	if err := s.Dim.Push(integration_label.tag, &types.AuthConfig{}); err != nil {
+		c.Error(err)
+	}
+	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
+	if _, err := exec.Command(dimExec, "delete", "--registry-url=localhost", "-k", "-r", integration_label.tag, "-l debug").Output(); err != nil {
+		c.Log(string(err.(*exec.ExitError).Stderr))
+		c.Error("Error when deleting image")
+	}
+	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
+
+	result, err := exec.Command(dimExec, "search", "--registry-url=localhost", "-k", "httpd", "-l debug").Output()
+	c.Log(string(result))
+	if err != nil {
+		c.Log(string(err.(*exec.ExitError).Stderr))
+	}
+	c.Assert(err, IsNil)
+	re := regexp.MustCompile("No result found")
+	//c.Assert(string(result), Matches, "\n.*0 Results found.*")
+	c.Assert(re.MatchString(string(result)), Equals, true)
+
+}
