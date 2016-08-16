@@ -161,10 +161,13 @@ func (c *RegistryClient) Search(query, advanced string) error {
 }
 
 const searchResultTemplate = `
+{{- if gt .NumResults 0 -}}
 {{.NumResults}} Results found :
 Name	Tag	Automated	Official
-{{ range $i, $r := .Results}} {{- $r.Name}}	{{$r.Description}}	{{$r.IsAutomated}}	{{$r.IsOfficial }}
+{{ range $i, $r := .Results}} {{- $r.Name}}	{{$r.Description}}	{{$r.IsAutomated}}	{{$r.IsOfficial}}
 {{end}}
+{{else -}}No result found
+{{end -}}
 `
 
 func (c *RegistryClient) WalkRepositories(repositories chan<- Repository) error {
