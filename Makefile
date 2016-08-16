@@ -48,3 +48,8 @@ completion:
 	go run -ldflags "-X main.GenerateCompletion=true" main.go
 	sudo mv dim_compl /etc/bash_completion.d/dim_compl
 	@@echo "run source ~/.bashrc to refresh completion"
+
+integration_tests: $(BINARY)
+	docker-compose up -d --build
+	go test ./integration/...
+	docker-compose stop && docker-compose rm -fv
