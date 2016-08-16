@@ -50,8 +50,8 @@ func Parse(name string, img *registry.Image) *Image {
 	}
 	parsed.FullName = fmt.Sprintf("%s:%s", name, img.Tag)
 
-	parsed.Label = img.Config.Labels
-	parsed.Labels = dim.Keys(img.Config.Labels)
+	parsed.Label = dim.FilterValues(img.Config.Labels, "")
+	parsed.Labels = dim.Keys(parsed.Label)
 
 	volumes := make([]string, 0, len(img.Config.Volumes))
 	for v, _ := range img.Config.Volumes {

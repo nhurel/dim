@@ -67,3 +67,15 @@ func Keys(m map[string]string) []string {
 	}
 	return keys
 }
+
+// FilterValues removes all element from m where value is s
+func FilterValues(m map[string]string, s string) map[string]string {
+	filtered := make(map[string]string, len(m))
+	for k, v := range m {
+		if v != s {
+			filtered[k] = v
+		}
+	}
+	return filtered
+
+}
