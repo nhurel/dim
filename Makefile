@@ -1,7 +1,7 @@
 BINARY=dim
 
 VET_DIR := ./cmd/... ./lib/... ./server/... ./wrapper/...
-DIR_SOURCES := cmd/ lib/ server/ wrapper/
+DIR_SOURCES := cmd/... lib/... server/... wrapper/...
 
 SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
 
@@ -13,7 +13,7 @@ SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
 
 default: $(BINARY)
 
-all: clean fmt lint vet test build docker install
+all: clean fmt lint vet test dim integration_tests docker install
 
 $(BINARY): $(SOURCES)
 	CGO_ENABLED=0 go build -a -installsuffix cgo -o $(BINARY) .
