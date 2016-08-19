@@ -113,12 +113,14 @@ func MockIndex() (bleve.Index, error) {
 
 func (s *TestSuite) SetUpSuite(c *C) {
 	logrus.SetLevel(logrus.InfoLevel)
-	if i, err := MockIndex(); err != nil {
+	var i bleve.Index
+	var err error
+	if i, err = MockIndex(); err != nil {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
-	} else {
-		s.index = &Index{i, "", nil, nil, sync.WaitGroup{}}
 	}
+
+	s.index = &Index{i, "", nil, nil, sync.WaitGroup{}}
 
 	for _, image := range images {
 		if err := s.index.Index.Index(image.ID, image); err != nil {

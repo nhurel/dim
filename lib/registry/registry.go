@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/distribution"
 	"github.com/docker/distribution/registry/client"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
@@ -22,6 +23,7 @@ import (
 	"text/template"
 )
 
+// Client defines method to interact with a registry
 type Client interface {
 	client.Registry
 	NewRepository(parsedName reference.Named) (Repository, error)
@@ -29,20 +31,21 @@ type Client interface {
 	WalkRepositories(repositories chan<- Repository) error
 }
 
-type RegistryClient struct {
+// RegistryClient implements Client interface
+type registryClient struct {
 	client.Registry
 	transport   http.RoundTripper
-	registryUrl string
+	registryURL string
 }
 
 var ctx = context.Background()
 
-// Create a registry client. Handles getting right credentials from user
-func New(registryAuth *types.AuthConfig, registryUrl string) (Client, error) {
+// New creates a registry client. Handles getting right credentials from user
+func New(registryAuth *types.AuthConfig, registryURL string) (Client, error) {
 	var err error
 	var reg client.Registry
 
-	if registryUrl == "" {
+	if registryURL == "" {
 		return nil, fmt.Errorf("No registry URL given")
 	}
 
@@ -52,7 +55,7 @@ func New(registryAuth *types.AuthConfig, registryUrl string) (Client, error) {
 		transport = registry.AuthTransport(transport, registryAuth, true)
 	}
 
-	if reg, err = client.NewRegistry(ctx, registryUrl, transport); err != nil {
+	if reg, err = client.NewRegistry(ctx, registryURL, transport); err != nil {
 		return nil, err
 	}
 
@@ -82,26 +85,29 @@ func New(registryAuth *types.AuthConfig, registryUrl string) (Client, error) {
 		}
 		registryAuth.Password = input
 		transport = registry.AuthTransport(transport, registryAuth, true)
-		if reg, err = client.NewRegistry(ctx, registryUrl, transport); err != nil {
+		if reg, err = client.NewRegistry(ctx, registryURL, transport); err != nil {
 			return nil, err
 		}
 	}
 
-	return &RegistryClient{reg, transport, registryUrl}, nil
+	return &registryClient{reg, transport, registryURL}, nil
 }
 
-// Create a Repository object to query the registry about a specific repository
-func (c *RegistryClient) NewRepository(parsedName reference.Named) (Repository, error) {
+// NewRepository creates a Repository object to query the registry about a specific repository
+func (c *registryClient) NewRepository(parsedName reference.Named) (Repository, error) {
 	logrus.WithField("name", parsedName).Debugln("Creating new repository")
-	if repo, err := client.NewRepository(ctx, parsedName, c.registryUrl, c.transport); err != nil {
-		return &RegistryRepository{}, err
-	} else {
-		return &RegistryRepository{Repository: repo, client: c}, nil
+
+	var repo distribution.Repository
+	var err error
+	if repo, err = client.NewRepository(ctx, parsedName, c.registryURL, c.transport); err != nil {
+		return &registryRepository{}, err
 	}
+
+	return &registryRepository{Repository: repo, client: c}, nil
 }
 
-// Runs a search against the registry, handling dim advanced querying option
-func (c *RegistryClient) Search(query, advanced string) error {
+// Search runs a search against the registry, handling dim advanced querying option
+func (c *registryClient) Search(query, advanced string) error {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	q := strings.TrimSpace(query)
@@ -123,7 +129,7 @@ func (c *RegistryClient) Search(query, advanced string) error {
 
 	var req *http.Request
 
-	if req, err = http.NewRequest(http.MethodPost, strings.Join([]string{c.registryUrl, "/v1/search"}, ""), body); err != nil {
+	if req, err = http.NewRequest(http.MethodPost, strings.Join([]string{c.registryURL, "/v1/search"}, ""), body); err != nil {
 		return fmt.Errorf("Failed to create request : %v", err)
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -170,10 +176,12 @@ Name	Tag	Automated	Official
 {{end -}}
 `
 
-func (c *RegistryClient) WalkRepositories(repositories chan<- Repository) error {
+// WalkRepositories walks through all repositories and send them in the given channel
+func (c *registryClient) WalkRepositories(repositories chan<- Repository) error {
 	return WalkRepositories(c, repositories)
 }
 
+// WalkRepositories walks through all repositories and ssend them in the given channel
 func WalkRepositories(c Client, repositories chan<- Repository) error {
 	var err error
 

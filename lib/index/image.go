@@ -14,6 +14,7 @@ import (
 	"time"
 )
 
+// Image modeling for indexation
 type Image struct {
 	ID           string
 	Name         string
@@ -33,7 +34,7 @@ type Image struct {
 
 }
 
-// Implement bleve.Classifier interface
+// Type implementation of bleve.Classifier interface
 func (im Image) Type() string {
 	return "image"
 }
@@ -54,7 +55,7 @@ func Parse(name string, img *registry.Image) *Image {
 	parsed.Labels = dim.Keys(parsed.Label)
 
 	volumes := make([]string, 0, len(img.Config.Volumes))
-	for v, _ := range img.Config.Volumes {
+	for v := range img.Config.Volumes {
 		volumes = append(volumes, v)
 	}
 	parsed.Volumes = volumes
@@ -70,7 +71,7 @@ func Parse(name string, img *registry.Image) *Image {
 	parsed.Envs = dim.Keys(envs)
 
 	ports := make([]int, 0, len(img.Config.ExposedPorts))
-	for p, _ := range img.Config.ExposedPorts {
+	for p := range img.Config.ExposedPorts {
 		ports = append(ports, p.Int())
 	}
 	parsed.ExposedPorts = ports

@@ -17,6 +17,7 @@ import (
 	"strings"
 )
 
+// Docker interface exposes the method used to interact with the docker daemon
 type Docker interface {
 	ImageBuild(parent string, buildLabels map[string]string, tag string) error
 	Pull(image string) error
@@ -25,21 +26,25 @@ type Docker interface {
 	Push(image string, auth *types.AuthConfig) error
 }
 
+// DockerClient implements Docker interface
 type DockerClient struct {
 	c *client.Client
 }
 
+// Client connects to the daemon and returns client object to interact with it
 func (dc *DockerClient) Client() (*client.Client, error) {
 	if dc.c == nil {
-		if cli, err := client.NewEnvClient(); err != nil {
+		var cli *client.Client
+		var err error
+		if cli, err = client.NewEnvClient(); err != nil {
 			return nil, err
-		} else {
-			dc.c = cli
 		}
+		dc.c = cli
 	}
 	return dc.c, nil
 }
 
+// ImageBuild builds a new image
 func (dc *DockerClient) ImageBuild(parent string, buildLabels map[string]string, tag string) error {
 	buildCtx, _, err := builder.GetContextFromReader(ioutil.NopCloser(strings.NewReader(fmt.Sprintf("FROM %s", parent))), "")
 	// Setup an upload progress bar
@@ -62,7 +67,7 @@ func (dc *DockerClient) ImageBuild(parent string, buildLabels map[string]string,
 	defer resp.Body.Close()
 
 	dec := json.NewDecoder(resp.Body)
-	var msg = &BuildStream{}
+	var msg = &buildStream{}
 	for dec.More() {
 		dec.Decode(msg)
 		logrus.Infoln(msg.Stream)
@@ -72,10 +77,11 @@ func (dc *DockerClient) ImageBuild(parent string, buildLabels map[string]string,
 	return nil
 }
 
-type BuildStream struct {
+type buildStream struct {
 	Stream string `json:"stream,omitempty"`
 }
 
+// Pull pulls an image from a registry
 func (dc *DockerClient) Pull(image string) error {
 	var c *client.Client
 	var err error
@@ -90,7 +96,7 @@ func (dc *DockerClient) Pull(image string) error {
 	if resp != nil {
 		defer resp.Close()
 		dec := json.NewDecoder(resp)
-		var msg = &PullStream{}
+		var msg = &pullStream{}
 		for dec.More() {
 			dec.Decode(msg)
 			fmt.Println(msg.Status)
@@ -100,10 +106,11 @@ func (dc *DockerClient) Pull(image string) error {
 	return err
 }
 
-type PullStream struct {
+type pullStream struct {
 	Status string `json:"status,omitempty"`
 }
 
+// Push pushes an image to a registry
 func (dc *DockerClient) Push(image string, auth *types.AuthConfig) error {
 	logrus.WithField("image", image).Debugln("Pushing image")
 	var c *client.Client
@@ -114,7 +121,7 @@ func (dc *DockerClient) Push(image string, auth *types.AuthConfig) error {
 	}
 
 	var a string
-	if a, err = EncodeAuthToBase64(*auth); err != nil {
+	if a, err = encodeAuthToBase64(*auth); err != nil {
 		return err
 	}
 	var resp io.ReadCloser
@@ -134,7 +141,7 @@ func (dc *DockerClient) Push(image string, auth *types.AuthConfig) error {
 	return err
 }
 
-func EncodeAuthToBase64(authConfig types.AuthConfig) (string, error) {
+func encodeAuthToBase64(authConfig types.AuthConfig) (string, error) {
 	buf, err := json.Marshal(authConfig)
 	if err != nil {
 		return "", err
@@ -156,6 +163,7 @@ func (dc *DockerClient) Inspect(image string) (types.ImageInspect, error) {
 	return resp, err
 }
 
+// Remove removes an image locally
 func (dc *DockerClient) Remove(image string) error {
 	logrus.WithField("image", image).Debugln("Entering Remove")
 	var c *client.Client

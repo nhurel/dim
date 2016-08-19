@@ -11,16 +11,18 @@ import (
 	"sync"
 )
 
+// Index manages indexation of docker images
 type Index struct {
+	// Index is the bleve.Index instance
 	bleve.Index
-	registryUrl  string
+	registryURL  string
 	registryAuth *types.AuthConfig
 	regClient    registry.Client
 	buildWg      sync.WaitGroup
 }
 
 // New create a new instance to manage a index of a given registry into a specific directory
-func New(dir string, registryUrl string, registryAuth *types.AuthConfig) (*Index, error) {
+func New(dir string, registryURL string, registryAuth *types.AuthConfig) (*Index, error) {
 	var i bleve.Index
 	var reg registry.Client
 	var err error
@@ -31,11 +33,11 @@ func New(dir string, registryUrl string, registryAuth *types.AuthConfig) (*Index
 		return nil, err
 	}
 
-	if reg, err = registry.New(registryAuth, registryUrl); err != nil {
+	if reg, err = registry.New(registryAuth, registryURL); err != nil {
 		return nil, err
 	}
 
-	return &Index{i, registryUrl, registryAuth, reg, sync.WaitGroup{}}, nil
+	return &Index{i, registryURL, registryAuth, reg, sync.WaitGroup{}}, nil
 }
 
 // Build creates a full index from the registry
@@ -76,19 +78,24 @@ func (idx *Index) indexRepository(repository registry.Repository) error {
 	return nil
 }
 
+// GetImageAndIndex gets image details and updates the index
 func (idx *Index) GetImageAndIndex(repository, tag string, dg digest.Digest) error {
 	named, _ := reference.ParseNamed(repository)
-	if repo, err := idx.regClient.NewRepository(named); err != nil {
+	var repo registry.Repository
+	var err error
+	if repo, err = idx.regClient.NewRepository(named); err != nil {
 		logrus.WithError(err).WithField("Repository", repository).Errorln("Failed get repository info")
 		return err
-	} else {
-		if img, err := repo.ImageFromManifest(dg, tag); err != nil {
-			logrus.WithError(err).Errorln("Failed to get image info from manifest")
-			return err
-		} else {
-			idx.IndexImage(Parse(repository, img))
-		}
 	}
+
+	var img *registry.Image
+	if img, err = repo.ImageFromManifest(dg, tag); err != nil {
+		logrus.WithError(err).Errorln("Failed to get image info from manifest")
+		return err
+	}
+
+	idx.IndexImage(Parse(repository, img))
+
 	return nil
 }
 
@@ -98,7 +105,7 @@ func (idx *Index) IndexImage(image *Image) {
 	idx.Index.Index(image.FullName, image)
 }
 
-// IndexImage adds a given image into the index
+// DeleteImage removes an image from the index
 func (idx *Index) DeleteImage(id string) {
 	l := logrus.WithField("imageID", id)
 	l.Debugln("Removing image from index")
@@ -122,6 +129,7 @@ func (idx *Index) DeleteImage(id string) {
 	}
 }
 
+// BuildQuery returns the query object corresponding to given parameters
 func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {
 	l := logrus.WithFields(logrus.Fields{"nameTag": nameTag, "advanced": advanced})
 	l.Debugln("Building query clause")

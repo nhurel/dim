@@ -129,13 +129,14 @@ func (s *RegistrySuite) SetUpSuite(c *C) {
 
 	logrus.SetLevel(logrus.DebugLevel)
 	fmt.Println("SetupSuite()")
-	if i, err := MockIndex(); err != nil {
+	var i bleve.Index
+	var err error
+	if i, err = MockIndex(); err != nil {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
-	} else {
-		fmt.Println("New index")
-		s.index = &Index{i, "", nil, &NoOpRegistryClient{}, sync.WaitGroup{}}
 	}
+	fmt.Println("New index")
+	s.index = &Index{i, "", nil, &NoOpRegistryClient{}, sync.WaitGroup{}}
 
 }
 

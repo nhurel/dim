@@ -45,7 +45,7 @@ fmt:
 
 
 completion:
-	go run -ldflags "-X main.GenerateCompletion=true" main.go
+	go run main.go autocomplete
 	sudo mv dim_compl /etc/bash_completion.d/dim_compl
 	@@echo "run source ~/.bashrc to refresh completion"
 
