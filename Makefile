@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 BINARY=dim
 
 VET_DIR := ./cmd/... ./lib/... ./server/... ./wrapper/...
@@ -16,13 +17,23 @@ default: $(BINARY)
 all: clean fmt lint vet test dim integration_tests docker install
 
 $(BINARY): $(SOURCES)
-	CGO_ENABLED=0 go build -a -installsuffix cgo -o $(BINARY) .
+	@v=$$(git describe --long --tags); \
+    mm=$${v%.0-*}; \
+    p=$${v#*.0-}; \
+    p=$${p%%-*}; \
+    v=$${mm}.$${p}; \
+	CGO_ENABLED=0 go build -a -installsuffix cgo -o $(BINARY) -ldflags "-X main.Version=$$v" .
 
 docker: $(BINARY)
 	docker build -t nhurel/dim:latest .
 
 install: $(BINARY)
-	go install
+	@v=$$(git describe --long --tags); \
+    mm=$${v%.0-*}; \
+    p=$${v#*.0-}; \
+    p=$${p%%-*}; \
+    v=$${mm}.$${p}; \
+	CGO_ENABLED=0 go install -a -installsuffix cgo -ldflags "-X main.Version=$$v"
 
 .PHONY: clean install vet lint fmt
 
@@ -53,3 +64,11 @@ integration_tests: $(BINARY)
 	docker-compose up -d --build
 	go test ./integration/...
 	docker-compose stop && docker-compose rm -fv
+
+current_version:
+	@v=$$(git describe --long --tags); \
+	mm=$${v%.0-*}; \
+	p=$${v#*.0-}; \
+	p=$${p%%-*}; \
+	v=$${mm}.$${p}; \
+	echo $$v
