@@ -6,6 +6,7 @@ DIR_SOURCES := cmd/... lib/... server/... wrapper/...
 
 SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
 
+git_tag = $(shell git describe --tags --long | sed -e 's/-/./g' | awk -F '.' '{print $$1"."$$2"."$$3+$$4}')
 
 #VERSION=1.0.0
 #BUILD_TIME=`date +%FT%T%z`
@@ -17,23 +18,13 @@ default: $(BINARY)
 all: clean fmt lint vet test dim integration_tests docker install
 
 $(BINARY): $(SOURCES)
-	@v=$$(git describe --long --tags); \
-    mm=$${v%.0-*}; \
-    p=$${v#*.0-}; \
-    p=$${p%%-*}; \
-    v=$${mm}.$${p}; \
-	CGO_ENABLED=0 go build -a -installsuffix cgo -o $(BINARY) -ldflags "-X main.Version=$$v" .
+	CGO_ENABLED=0 go build -a -installsuffix cgo -o $(BINARY) -ldflags "-X main.Version=$(git_tag)" .
 
 docker: $(BINARY)
 	docker build -t nhurel/dim:latest .
 
 install: $(BINARY)
-	@v=$$(git describe --long --tags); \
-    mm=$${v%.0-*}; \
-    p=$${v#*.0-}; \
-    p=$${p%%-*}; \
-    v=$${mm}.$${p}; \
-	CGO_ENABLED=0 go install -a -installsuffix cgo -ldflags "-X main.Version=$$v"
+	CGO_ENABLED=0 go install -a -installsuffix cgo -ldflags "-X main.Version=$(git_tag)"
 
 .PHONY: clean install vet lint fmt
 
@@ -66,9 +57,17 @@ integration_tests: $(BINARY)
 	docker-compose stop && docker-compose rm -fv
 
 current_version:
-	@v=$$(git describe --long --tags); \
-	mm=$${v%.0-*}; \
-	p=$${v#*.0-}; \
-	p=$${p%%-*}; \
-	v=$${mm}.$${p}; \
-	echo $$v
+	@echo $(git_tag)
+
+version_bump:
+	n=$$(git describe --tags --long | sed -e 's/-/./g' | awk -F '.' '{print $$4}'); \
+	maj=$$(git log --format=oneline -n $$n | grep "#major"); \
+	min=$$(git log --format=oneline -n $$n | grep "#minor"); \
+	if [ -n "$$maj" ]; then \
+		TAG=$(shell git describe --tags --long | sed -e 's/-/./g' | awk -F '.' '{print $$1+1".0.0"}'); \
+	elif [ -n "$$min" ]; then \
+		TAG=$(shell git describe --tags --long | sed -e 's/-/./g' | awk -F '.' '{print $$1"."$$2+1".0"}'); \
+	else \
+		TAG=$(shell git describe --tags --long | sed -e 's/-/./g' | awk -F '.' '{print $$1"."$$2"."$$3+$$4+1}'); \
+	fi; \
+	git tag -a -m "Automatic version bump" $$TAG
