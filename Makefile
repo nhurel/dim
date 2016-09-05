@@ -23,8 +23,8 @@ $(BINARY): $(SOURCES)
 docker: $(BINARY)
 	docker build -t nhurel/dim:latest .
 
-install: $(BINARY)
-	CGO_ENABLED=0 go install -a -installsuffix cgo -ldflags "-X main.Version=$(git_tag)"
+install:
+	go install -ldflags "-X main.Version=$(git_tag)"
 
 .PHONY: clean install vet lint fmt
 
