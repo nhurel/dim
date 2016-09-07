@@ -60,6 +60,7 @@ current_version:
 	@echo $(git_tag)
 
 version_bump:
+	git pull --tags
 	n=$$(git describe --tags --long | sed -e 's/-/./g' | awk -F '.' '{print $$4}'); \
 	maj=$$(git log --format=oneline -n $$n | grep "#major"); \
 	min=$$(git log --format=oneline -n $$n | grep "#minor"); \
@@ -71,3 +72,4 @@ version_bump:
 		TAG=$(shell git describe --tags --long | sed -e 's/-/./g' | awk -F '.' '{print $$1"."$$2"."$$3+$$4+1}'); \
 	fi; \
 	git tag -a -m "Automatic version bump" $$TAG
+	git push --tags
