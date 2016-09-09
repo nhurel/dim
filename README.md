@@ -17,9 +17,9 @@ DIM is written in go so it is easy to install. Moreover a docker image is availa
 
 ## Client installation
 
-To run dim in client mode, simply download the binary and give it execution permission.
+To run dim in client mode, simply download the latest binary from the [release page](https://github.com/nhurel/dim/releases) and give it execution permission.
 ```bash
-curl -L https://github.com/nhurel/dim/releases/download/latest/dim-linux-x64 -o dim
+curl -L https://github.com/nhurel/dim/releases/download/<version>/dim-linux-x64 -o dim
 chmod a+x dim
 ./dim help
 ```
