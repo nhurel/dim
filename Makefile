@@ -20,8 +20,15 @@ all: clean fmt lint vet test dim integration_tests docker install
 $(BINARY): $(SOURCES)
 	CGO_ENABLED=0 go build -a -installsuffix cgo -o $(BINARY) -ldflags "-X main.Version=$(git_tag)" .
 
+distribution:
+	rm -rf dist && mkdir -p dist
+	GOOS=linux GOARCH=amd64 go build -o dist/$(BINARY)-linux -ldflags "-X main.Version=$(git_tag)" .
+	GOOS=windows GOARCH=amd64 go build -o dist/$(BINARY)-windows.exe -ldflags "-X main.Version=$(git_tag)" .
+	GOOS=darwin GOARCH=amd64 go build -o dist/$(BINARY)-darwin  -ldflags "-X main.Version=$(git_tag)" .
+
+
 docker: $(BINARY)
-	docker build -t nhurel/dim:latest .
+	docker build -t nhurel/dim:$(git_tag) .
 
 install:
 	go install -ldflags "-X main.Version=$(git_tag)"

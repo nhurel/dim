@@ -21,6 +21,12 @@
 			"revisionTime": "2016-03-09T02:19:12Z"
 		},
 		{
+			"checksumSHA1": "vzPNBiOJFecKT9FA6aAtmOjRlgs=",
+			"path": "github.com/Microsoft/go-winio",
+			"revision": "ce2922f643c8fd76b46cadc7f404a06282678b34",
+			"revisionTime": "2016-06-21T21:14:38Z"
+		},
+		{
 			"checksumSHA1": "QCAKzv0affIi7mlcGqPR8S3w6s0=",
 			"path": "github.com/Sirupsen/logrus",
 			"revision": "219c8cb75c258c552e999735be6df753ffc7afdc",
@@ -891,6 +897,12 @@
 			"revisionTime": "2016-03-03T20:01:16Z"
 		},
 		{
+			"checksumSHA1": "40vJyUB4ezQSn/NSadsKEOrudMc=",
+			"path": "github.com/inconshreveable/mousetrap",
+			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75",
+			"revisionTime": "2014-10-17T20:07:13Z"
+		},
+		{
 			"checksumSHA1": "HIsIO4+e5awXjNSj/UJzbSePEZQ=",
 			"path": "github.com/kr/pretty",
 			"revision": "add1dbc86daf0f983cd4a48ceb39deb95c729b67",
@@ -1002,6 +1014,12 @@
 			"checksumSHA1": "c8iMfP5+K3GEg26HJiO0OVVLiM4=",
 			"origin": "github.com/nhurel/dim/vendor/golang.org/x/sys/unix",
 			"path": "golang.org/x/sys/unix",
+			"revision": "f64b50fbea64174967a8882830d621a18ee1548e",
+			"revisionTime": "2016-04-14T13:31:22Z"
+		},
+		{
+			"checksumSHA1": "6aa7Y4gpUDxYNt48cOT95zMjp9E=",
+			"path": "golang.org/x/sys/windows",
 			"revision": "f64b50fbea64174967a8882830d621a18ee1548e",
 			"revisionTime": "2016-04-14T13:31:22Z"
 		},
