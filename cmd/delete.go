@@ -12,9 +12,13 @@ import (
 )
 
 var deleteCommand = &cobra.Command{
-	Use:   "delete",
+	Use:   "delete image",
 	Short: "Deletes an image",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return fmt.Errorf("image name missing")
+		}
+
 		image := args[0]
 
 		Dim.Remove(image)

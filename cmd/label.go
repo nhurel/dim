@@ -1,15 +1,19 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib"
 	"github.com/spf13/cobra"
 )
 
 var labelCommand = &cobra.Command{
-	Use:   "label [--delete] IMAGE[:TAG] LABEL_KEY=LABEL_VALUE...",
+	Use:   "label [--delete] IMAGE[:TAG] LABEL_KEY[=LABEL_VALUE]...",
 	Short: "Add / Remove a label to a given image",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 2 {
+			return fmt.Errorf("Missing argument. See help")
+		}
 		image := args[0]
 		labels := args[1:]
 

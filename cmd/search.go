@@ -10,12 +10,12 @@ import (
 )
 
 var searchCommand = &cobra.Command{
-	Use: "search",
+	Use: "search query",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		query := args[0]
-		if query == "" {
-			return errors.New("Search is mandatory")
+		if len(args) == 0 {
+			return errors.New("query is missing")
 		}
+		query := args[0]
 
 		var authConfig *types.AuthConfig
 		if username != "" || password != "" {

@@ -13,8 +13,9 @@ import (
 
 // RootCommand is the main cobraCommand all other commands are attached to
 var RootCommand = &cobra.Command{
-	Use:   "dim",
-	Short: "Docker Image Management is a simple cli to manage docker images",
+	Use:          "dim",
+	Short:        "Docker Image Management is a simple cli to manage docker images",
+	SilenceUsage: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		switch logLevel {
 		case "debug":

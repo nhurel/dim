@@ -1,13 +1,17 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"os"
 )
 
 var showCommand = &cobra.Command{
-	Use: "show",
+	Use: "show image",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return fmt.Errorf("image name is missing")
+		}
 		image := args[0]
 		return Dim.PrintImageInfo(os.Stdout, image, templateFlag)
 	},
