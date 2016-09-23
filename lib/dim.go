@@ -3,7 +3,6 @@ package dim
 import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/docker/utils/templates"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	"io"
@@ -118,51 +117,15 @@ func (d *Dim) RemoveLabel(parent string, labels []string, tag string) error {
 	return d.Docker.ImageBuild(parent, buildLabels, tag)
 }
 
-const infoTpl = `
-Name : {{range $i, $e := .RepoTags}} {{if eq $i  0}}{{$e}}{{end}}{{end}}
-Id :  {{.ID}}
-Labels:
-{{range $k, $v := .Config.Labels}}{{$k}} = {{$v}}
-{{end}}
-Tags:
-{{range $i, $e := .RepoTags}}{{$e}}
-{{end}}
-Ports :
-{{range $k, $v := .Config.ExposedPorts}}{{$k}} = {{$v}}
-{{end}}
-Volumes:
-{{range $k, $v := .Config.Volumes}}{{$k}} = {{$v}}
-{{end}}
-Env :
-{{ range $i, $e := .Config.Env}} {{$e}}
-{{end}}
-Entrypoint : {{.Config.Entrypoint}}
-Command : {{.Config.Cmd}}
-`
-
 // PrintImageInfo writes image information to the writer
-func (d *Dim) PrintImageInfo(w io.Writer, image, optionTpl string) error {
+func (d *Dim) PrintImageInfo(w io.Writer, image string, tpl *template.Template) error {
 	var err error
 	var infos types.ImageInspect
-
-	var tpl *template.Template
 
 	if infos, err = d.Docker.Inspect(image); err != nil {
 		return err
 	}
 
-	var t string
-	if optionTpl != "" {
-		t = optionTpl
-	} else {
-		t = infoTpl
-	}
+	return tpl.Execute(w, infos)
 
-	if tpl, err = templates.Parse(t); err != nil {
-		return err
-	}
-
-	err = tpl.Execute(w, infos)
-
-	return err
 }

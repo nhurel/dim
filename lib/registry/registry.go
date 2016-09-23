@@ -29,6 +29,7 @@ type Client interface {
 	NewRepository(parsedName reference.Named) (Repository, error)
 	Search(query, advanced string) error
 	WalkRepositories(repositories chan<- Repository) error
+	PrintImageInfo(out io.Writer, parsedName reference.Named, tpl *template.Template) error
 }
 
 // RegistryClient implements Client interface
@@ -222,4 +223,37 @@ func WalkRepositories(c Client, repositories chan<- Repository) error {
 	}
 	return nil
 
+}
+
+// PrintImageInfo prints the info about an image available on the remote registry
+func (c *registryClient) PrintImageInfo(w io.Writer, parsedName reference.Named, tpl *template.Template) error {
+	var repository Repository
+	var err error
+	name, _ := reference.ParseNamed(parsedName.Name()[strings.Index(parsedName.Name(), "/")+1:])
+	if repository, err = c.NewRepository(name); err != nil {
+		logrus.WithError(err).Errorln("Failed to fetch repository info")
+		return err
+	}
+
+	var tag string
+	switch parsedName := parsedName.(type) {
+	case reference.NamedTagged:
+		tag = parsedName.Tag()
+	default:
+		tag = "latest"
+	}
+
+	var image *Image
+	if image, err = repository.Image(tag); err != nil {
+		logrus.WithError(err).Errorln("Failed to fetch image info")
+		return err
+	}
+
+	info := &types.ImageInspect{
+		RepoTags: []string{image.Tag},
+		ID:       image.ImageID(),
+		Config:   image.Config,
+	}
+
+	return tpl.Execute(w, info)
 }

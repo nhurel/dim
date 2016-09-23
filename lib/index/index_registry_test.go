@@ -17,6 +17,7 @@ import (
 	"io"
 	"sync"
 	"testing"
+	"text/template"
 )
 
 type RegistrySuite struct {
@@ -43,6 +44,10 @@ func (r *NoOpRegistryClient) Search(query, advanced string) error {
 
 func (r *NoOpRegistryClient) WalkRepositories(repositories chan<- registry.Repository) error {
 	return registry.WalkRepositories(r, repositories)
+}
+
+func (r *NoOpRegistryClient) PrintImageInfo(w io.Writer, parsedName reference.Named, tpl *template.Template) error {
+	return nil
 }
 
 type NoOpRegistryRepository struct {
