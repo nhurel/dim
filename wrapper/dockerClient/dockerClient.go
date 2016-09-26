@@ -1,6 +1,7 @@
 package dockerClient
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,11 +10,14 @@ import (
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/progress"
 	"github.com/docker/docker/pkg/streamformatter"
+	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
+	"github.com/nhurel/dim/lib/utils"
 	"golang.org/x/net/context"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"strings"
 )
 
@@ -23,12 +27,14 @@ type Docker interface {
 	Pull(image string) error
 	Inspect(image string) (types.ImageInspect, error)
 	Remove(image string) error
-	Push(image string, auth *types.AuthConfig) error
+	Push(image string) error
 }
 
 // DockerClient implements Docker interface
 type DockerClient struct {
-	c *client.Client
+	c        *client.Client
+	Auth     *types.AuthConfig
+	Insecure bool
 }
 
 // Client connects to the daemon and returns client object to interact with it
@@ -91,7 +97,17 @@ func (dc *DockerClient) Pull(image string) error {
 	}
 
 	var resp io.ReadCloser
-	resp, err = c.ImagePull(context.Background(), image, types.ImagePullOptions{})
+
+	var a string
+	var n reference.Named
+	if n, err = reference.ParseNamed(image); err != nil {
+		return err
+	}
+
+	if a, err = dc.Authenticate(n.Hostname()); err != nil {
+		return err
+	}
+	resp, err = c.ImagePull(context.Background(), image, types.ImagePullOptions{RegistryAuth: a})
 
 	if resp != nil {
 		defer resp.Close()
@@ -106,12 +122,40 @@ func (dc *DockerClient) Pull(image string) error {
 	return err
 }
 
+func (dc *DockerClient) Authenticate(registryUrl string) (string, error) {
+	if dc.Auth == nil {
+		dc.Auth = &types.AuthConfig{}
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, utils.BuildURL(fmt.Sprintf("%s/v2/", registryUrl), dc.Insecure), &bytes.Buffer{})
+	req.SetBasicAuth(dc.Auth.Username, dc.Auth.Password)
+	var resp *http.Response
+	var err error
+
+	for resp, err = http.DefaultClient.Do(req); (resp == nil || resp.StatusCode == http.StatusUnauthorized) && err == nil; {
+		utils.ReadCredentials(dc.Auth)
+		logrus.WithFields(logrus.Fields{"Login": dc.Auth.Username, "Password": dc.Auth.Password}).Debugln("Testing credentials")
+		req.SetBasicAuth(dc.Auth.Username, dc.Auth.Password)
+		resp, err = http.DefaultClient.Do(req)
+		if resp.StatusCode > http.StatusUnauthorized {
+			e, _ := ioutil.ReadAll(resp.Body)
+			return "", fmt.Errorf("Server error occured : %s", string(e))
+		}
+		resp.Body.Close()
+	}
+	if err != nil {
+		return "", err
+	}
+	return encodeAuthToBase64(*dc.Auth)
+
+}
+
 type pullStream struct {
 	Status string `json:"status,omitempty"`
 }
 
 // Push pushes an image to a registry
-func (dc *DockerClient) Push(image string, auth *types.AuthConfig) error {
+func (dc *DockerClient) Push(image string) error {
 	logrus.WithField("image", image).Debugln("Pushing image")
 	var c *client.Client
 	var err error
@@ -121,7 +165,12 @@ func (dc *DockerClient) Push(image string, auth *types.AuthConfig) error {
 	}
 
 	var a string
-	if a, err = encodeAuthToBase64(*auth); err != nil {
+	var n reference.Named
+	if n, err = reference.ParseNamed(image); err != nil {
+		return err
+	}
+
+	if a, err = dc.Authenticate(n.Hostname()); err != nil {
 		return err
 	}
 	var resp io.ReadCloser

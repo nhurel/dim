@@ -2,8 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/docker/engine-api/types"
-	"github.com/nhurel/dim/lib"
+	"github.com/nhurel/dim/lib/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -20,14 +19,6 @@ var labelCommand = &cobra.Command{
 		var imageTags []string
 		var tag string
 		var err error
-
-		var authConfig *types.AuthConfig
-		if remoteFlag {
-			if username != "" || password != "" {
-				authConfig = &types.AuthConfig{Username: username, Password: password}
-			}
-			// TODO : get credentials the docker way and/or handle login
-		}
 
 		if pullFlag {
 			if err = Dim.Pull(image); err != nil {
@@ -54,7 +45,7 @@ var labelCommand = &cobra.Command{
 		}
 
 		if overrideFlag {
-			if dim.ListContains(imageTags, image) && image != tag {
+			if utils.ListContains(imageTags, image) && image != tag {
 				if err = Dim.Remove(image); err != nil {
 					return err
 				}
@@ -62,7 +53,7 @@ var labelCommand = &cobra.Command{
 		}
 
 		if remoteFlag {
-			if err = Dim.Push(tag, authConfig); err != nil {
+			if err = Dim.Push(tag); err != nil {
 				return err
 			}
 		}

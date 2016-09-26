@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	. "gopkg.in/check.v1"
@@ -43,7 +42,7 @@ var integration_label = testImages{
 var dimExec = "../dim"
 
 func (s *IntegrationTestSuite) SetUpSuite(c *C) {
-	s.Dim = &dim.Dim{Docker: &dockerClient.DockerClient{}}
+	s.Dim = &dim.Dim{Docker: &dockerClient.DockerClient{Insecure: true}}
 	if err := s.Dim.Pull("httpd:2.4-alpine"); err != nil {
 		c.Error(err)
 	}
@@ -53,7 +52,7 @@ func (s *IntegrationTestSuite) TestLabelAndSearch(c *C) {
 	if err := s.Dim.AddLabel("httpd:2.4-alpine", integration_label.labels, integration_label.tag); err != nil {
 		c.Error(err)
 	}
-	if err := s.Dim.Push(integration_label.tag, &types.AuthConfig{}); err != nil {
+	if err := s.Dim.Push(integration_label.tag); err != nil {
 		c.Error(err)
 	}
 	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
@@ -81,7 +80,7 @@ func (s *IntegrationTestSuite) TestUnlabelAndSearch(c *C) {
 	if err := s.Dim.RemoveLabel(integration_label.tag, integration_label.labelsName, integration_label.tag); err != nil {
 		c.Error(err)
 	}
-	if err := s.Dim.Push(integration_label.tag, &types.AuthConfig{}); err != nil {
+	if err := s.Dim.Push(integration_label.tag); err != nil {
 		c.Error(err)
 	}
 	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
@@ -105,7 +104,7 @@ func (s *IntegrationTestSuite) TestDeleteAndSearch(c *C) {
 	if err := s.Dim.AddLabel("httpd:2.4-alpine", integration_label.labels, integration_label.tag); err != nil {
 		c.Error(err)
 	}
-	if err := s.Dim.Push(integration_label.tag, &types.AuthConfig{}); err != nil {
+	if err := s.Dim.Push(integration_label.tag); err != nil {
 		c.Error(err)
 	}
 	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image

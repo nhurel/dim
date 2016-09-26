@@ -50,6 +50,6 @@ func (*NoOpDockerClient) Inspect(image string) (types.ImageInspect, error) {
 func (*NoOpDockerClient) Remove(image string) error {
 	return nil
 }
-func (*NoOpDockerClient) Push(image string, auth *types.AuthConfig) error {
+func (*NoOpDockerClient) Push(image string) error {
 	return nil
 }

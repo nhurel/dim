@@ -7,6 +7,7 @@ import (
 	"github.com/docker/engine-api/types"
 	imageParser "github.com/docker/engine-api/types/reference"
 	"github.com/nhurel/dim/lib/registry"
+	"github.com/nhurel/dim/lib/utils"
 	"github.com/spf13/cobra"
 	"strings"
 )
@@ -39,7 +40,7 @@ var deleteCommand = &cobra.Command{
 
 			logrus.WithField("hostname", parsedName.Hostname()).Debugln("Connecting to registry")
 
-			if client, err = registry.New(authConfig, buildURL(parsedName.Hostname())); err != nil {
+			if client, err = registry.New(authConfig, utils.BuildURL(parsedName.Hostname(), insecure)); err != nil {
 				return fmt.Errorf("Failed to connect to registry : %v", err)
 			}
 

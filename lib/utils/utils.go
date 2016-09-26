@@ -1,4 +1,12 @@
-package dim
+package utils
+
+import (
+	"fmt"
+	"github.com/Sirupsen/logrus"
+	"github.com/docker/engine-api/types"
+	"github.com/howeyc/gopass"
+	"strings"
+)
 
 // ListContains checks a list of string contains a given string
 func ListContains(list []string, search string) bool {
@@ -77,5 +85,44 @@ func FilterValues(m map[string]string, s string) map[string]string {
 		}
 	}
 	return filtered
+
+}
+
+func ReadCredentials(registryAuth *types.AuthConfig) {
+	logrus.WithFields(logrus.Fields{"Login": registryAuth.Username, "Password": registryAuth.Password}).Debugln("Reading new credentials")
+	if registryAuth.Username != "" {
+		fmt.Printf("Username (%s) :", registryAuth.Username)
+	} else {
+		fmt.Print("Username :")
+	}
+	var input string
+	fmt.Scanln(&input)
+	if input != "" {
+		registryAuth.Username = input
+	} else if registryAuth.Username == "" {
+		return
+	}
+	fmt.Print("Password :")
+	pwd, _ := gopass.GetPasswd()
+	input = string(pwd)
+	if input == "" {
+		return
+	}
+	registryAuth.Password = input
+}
+
+func BuildURL(hostname string, insecure bool) string {
+	if hostname == "" {
+		return ""
+	}
+	if strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://") {
+		return hostname
+	}
+
+	protocol := "https"
+	if insecure {
+		protocol = "http"
+	}
+	return fmt.Sprintf("%s://%s", protocol, hostname)
 
 }

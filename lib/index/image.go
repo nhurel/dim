@@ -8,8 +8,8 @@ import (
 	"github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
 	"github.com/blevesearch/bleve/analysis/analyzers/standard_analyzer"
 	"github.com/blevesearch/bleve/analysis/datetime_parsers/datetime_optional"
-	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/registry"
+	"github.com/nhurel/dim/lib/utils"
 	"strings"
 	"time"
 )
@@ -51,8 +51,8 @@ func Parse(name string, img *registry.Image) *Image {
 	}
 	parsed.FullName = fmt.Sprintf("%s:%s", name, img.Tag)
 
-	parsed.Label = dim.FilterValues(img.Config.Labels, "")
-	parsed.Labels = dim.Keys(parsed.Label)
+	parsed.Label = utils.FilterValues(img.Config.Labels, "")
+	parsed.Labels = utils.Keys(parsed.Label)
 
 	volumes := make([]string, 0, len(img.Config.Volumes))
 	for v := range img.Config.Volumes {
@@ -68,7 +68,7 @@ func Parse(name string, img *registry.Image) *Image {
 		}
 	}
 	parsed.Env = envs
-	parsed.Envs = dim.Keys(envs)
+	parsed.Envs = utils.Keys(envs)
 
 	ports := make([]int, 0, len(img.Config.ExposedPorts))
 	for p := range img.Config.ExposedPorts {

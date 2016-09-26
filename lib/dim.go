@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
+	"github.com/nhurel/dim/lib/utils"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	"io"
 	"strings"
@@ -41,7 +42,7 @@ func (d *Dim) AddLabel(parent string, labels []string, tag string) error {
 		return err
 	}
 
-	if MapMatchesAll(actualLabels, buildLabels) {
+	if utils.MapMatchesAll(actualLabels, buildLabels) {
 		return fmt.Errorf("Image %s already contains the label(s) you want to set", parent)
 	}
 
@@ -79,8 +80,8 @@ func (d *Dim) Remove(image string) error {
 }
 
 // Push pushes an image to a registry
-func (d *Dim) Push(image string, auth *types.AuthConfig) error {
-	return d.Docker.Push(image, auth)
+func (d *Dim) Push(image string) error {
+	return d.Docker.Push(image)
 }
 
 // RemoveLabel clear the given labels to image parent and applies the fiven tag to the newly bulit image. Labels cannot be deleted so their value is only reset to an empty string

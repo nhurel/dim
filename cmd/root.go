@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib"
+	"github.com/nhurel/dim/lib/utils"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -31,10 +33,17 @@ var RootCommand = &cobra.Command{
 		}
 
 		u := viper.GetString("registry-url")
-		url = buildURL(u)
+		url = utils.BuildURL(u, insecure)
 
 		username = viper.GetString("registry-user")
 		password = viper.GetString("registry-password")
+
+		var authConfig *types.AuthConfig
+		if username != "" || password != "" {
+			authConfig = &types.AuthConfig{Username: username, Password: password}
+		}
+
+		Dim = &dim.Dim{Docker: &dockerClient.DockerClient{Auth: authConfig, Insecure: insecure}}
 	},
 }
 
@@ -76,14 +85,14 @@ func init() {
 }
 
 // Dim instance has a dockerClient object to interact with docker daemon
-var Dim = &dim.Dim{Docker: &dockerClient.DockerClient{}}
+var Dim *dim.Dim
 
 // GuessTag returns the tag to apply to the image to build
 func guessTag(tagOption string, imageName string, imageTags []string, override bool) (string, error) {
 	logrus.WithFields(logrus.Fields{"tagOption": tagOption, "imageName": imageName, "imageTags": imageTags, "override": override}).Debug("Entering guessTag")
 	tag := tagOption
 	if override && tag == "" {
-		if !dim.ListContains(imageTags, imageName) {
+		if !utils.ListContains(imageTags, imageName) {
 			if len(imageTags) > 0 {
 				tag = imageTags[0]
 			} else {
@@ -94,20 +103,4 @@ func guessTag(tagOption string, imageName string, imageTags []string, override b
 		}
 	}
 	return tag, nil
-}
-
-func buildURL(hostname string) string {
-	if hostname == "" {
-		return ""
-	}
-	if strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://") {
-		return hostname
-	}
-
-	protocol := "https"
-	if insecure {
-		protocol = "http"
-	}
-	return fmt.Sprintf("%s://%s", protocol, hostname)
-
 }
