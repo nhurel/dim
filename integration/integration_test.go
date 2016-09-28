@@ -41,6 +41,23 @@ var integration_label = testImages{
 
 var dimExec = "../dim"
 
+func runCommand(command string, args ...interface{}) (string, error) {
+	params := make([]string, 0, len(args))
+
+	for _, a := range args {
+		switch a := a.(type) {
+		case []string:
+			params = append(params, a...)
+		case string:
+			params = append(params, a)
+		}
+	}
+
+	o, err := exec.Command(command, params...).Output()
+	return string(o), err
+
+}
+
 func (s *IntegrationTestSuite) SetUpSuite(c *C) {
 	s.Dim = &dim.Dim{Docker: &dockerClient.DockerClient{Insecure: true}}
 	if err := s.Dim.Pull("httpd:2.4-alpine"); err != nil {
@@ -49,20 +66,19 @@ func (s *IntegrationTestSuite) SetUpSuite(c *C) {
 }
 
 func (s *IntegrationTestSuite) TestLabelAndSearch(c *C) {
-	if err := s.Dim.AddLabel("httpd:2.4-alpine", integration_label.labels, integration_label.tag); err != nil {
-		c.Error(err)
+	if o, err := runCommand(dimExec, "label", "httpd:2.4-alpine", "-t", integration_label.tag, "-p", "-k", "-r", integration_label.labels); err != nil {
+		c.Error(o)
+		c.Fatal(err)
 	}
-	if err := s.Dim.Push(integration_label.tag); err != nil {
-		c.Error(err)
-	}
+
 	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
 
 	queries := []string{"Label.type:web", "Label.first:true"}
 
 	for _, q := range queries {
 		c.Logf("Checking query %s returns httpd:first\n", q)
-		result, err := exec.Command(dimExec, "search", "--registry-url=localhost", "-k", "-a", q, "-l debug").Output()
-		c.Log(string(result))
+		result, err := runCommand(dimExec, "search", "--registry-url=localhost", "-k", "-a", q, "-l debug")
+		c.Log(result)
 		if err != nil {
 			c.Log(string(err.(*exec.ExitError).Stderr))
 		}
@@ -74,24 +90,25 @@ func (s *IntegrationTestSuite) TestLabelAndSearch(c *C) {
 }
 
 func (s *IntegrationTestSuite) TestUnlabelAndSearch(c *C) {
-	if err := s.Dim.AddLabel("httpd:2.4-alpine", integration_label.labels, integration_label.tag); err != nil {
-		c.Error(err)
+	if o, err := runCommand(dimExec, "label", "httpd:2.4-alpine", "-t", integration_label.tag, "-p", integration_label.labels); err != nil {
+		c.Error(o)
+		c.Fatal(err)
 	}
-	if err := s.Dim.RemoveLabel(integration_label.tag, integration_label.labelsName, integration_label.tag); err != nil {
-		c.Error(err)
+
+	if o, err := runCommand(dimExec, "label", "-d", "-o", "-r", integration_label.tag, "-p", "-k", integration_label.labelsName); err != nil {
+		c.Error(o)
+		c.Fatal(err)
 	}
-	if err := s.Dim.Push(integration_label.tag); err != nil {
-		c.Error(err)
-	}
+
 	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
 
 	queries := []string{"Label.type:web", "Label.first:true", "Labels.type:/*/"}
 	for _, q := range queries {
 		c.Logf("Checking query %s returns 0 result\n", q)
-		result, err := exec.Command(dimExec, "search", "--registry-url=localhost", "-k", "-a", q, "-l debug").Output()
-		c.Log(string(result))
+		result, err := runCommand(dimExec, "search", "--registry-url=localhost", "-k", "-a", q)
+		c.Log(result)
 		if err != nil {
-			c.Log(string(err.(*exec.ExitError).Stderr))
+			c.Error(string(err.(*exec.ExitError).Stderr))
 		}
 		c.Assert(err, IsNil)
 		re := regexp.MustCompile("No result found")
@@ -101,21 +118,22 @@ func (s *IntegrationTestSuite) TestUnlabelAndSearch(c *C) {
 }
 
 func (s *IntegrationTestSuite) TestDeleteAndSearch(c *C) {
-	if err := s.Dim.AddLabel("httpd:2.4-alpine", integration_label.labels, integration_label.tag); err != nil {
-		c.Error(err)
+	if o, err := runCommand(dimExec, "label", "-p", "httpd:2.4-alpine", "-t", integration_label.tag, "-r", "-k", integration_label.labels); err != nil {
+		c.Error(o)
+		c.Fatal(err)
 	}
-	if err := s.Dim.Push(integration_label.tag); err != nil {
-		c.Error(err)
-	}
+
 	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
-	if _, err := exec.Command(dimExec, "delete", "--registry-url=localhost", "-k", "-r", integration_label.tag, "-l debug").Output(); err != nil {
+
+	if o, err := runCommand(dimExec, "delete", "--registry-url=localhost", "-k", "-r", integration_label.tag); err != nil {
+		c.Log(o)
 		c.Log(string(err.(*exec.ExitError).Stderr))
 		c.Error("Error when deleting image")
 	}
 	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
 
-	result, err := exec.Command(dimExec, "search", "--registry-url=localhost", "-k", "httpd", "-l debug").Output()
-	c.Log(string(result))
+	result, err := runCommand(dimExec, "search", "--registry-url=localhost", "-k", "httpd")
+	c.Log(result)
 	if err != nil {
 		c.Log(string(err.(*exec.ExitError).Stderr))
 	}

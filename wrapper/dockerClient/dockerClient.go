@@ -123,18 +123,20 @@ func (dc *DockerClient) Pull(image string) error {
 }
 
 func (dc *DockerClient) Authenticate(registryUrl string) (string, error) {
+
 	if dc.Auth == nil {
 		dc.Auth = &types.AuthConfig{}
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, utils.BuildURL(fmt.Sprintf("%s/v2/", registryUrl), dc.Insecure), &bytes.Buffer{})
 	req.SetBasicAuth(dc.Auth.Username, dc.Auth.Password)
+	logrus.WithFields(logrus.Fields{"URL": req.URL, "Login": dc.Auth.Username, "Password": dc.Auth.Password}).Debugln("Testing credentials")
 	var resp *http.Response
 	var err error
 
 	for resp, err = http.DefaultClient.Do(req); (resp == nil || resp.StatusCode == http.StatusUnauthorized) && err == nil; {
 		utils.ReadCredentials(dc.Auth)
-		logrus.WithFields(logrus.Fields{"Login": dc.Auth.Username, "Password": dc.Auth.Password}).Debugln("Testing credentials")
+		logrus.WithFields(logrus.Fields{"URL": req.URL, "Login": dc.Auth.Username, "Password": dc.Auth.Password}).Debugln("Testing credentials")
 		req.SetBasicAuth(dc.Auth.Username, dc.Auth.Password)
 		resp, err = http.DefaultClient.Do(req)
 		if resp.StatusCode > http.StatusUnauthorized {
