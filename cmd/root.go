@@ -71,8 +71,8 @@ func init() {
 
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("dim")
-	viper.AddConfigPath("$HOME/.dim")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("$HOME/.dim")
 	if err := viper.ReadInConfig(); err != nil {
 		switch err.(type) {
 		case *os.PathError:
