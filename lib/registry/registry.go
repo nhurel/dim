@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/docker/engine-api/types"
+	imageParser "github.com/docker/engine-api/types/reference"
 	reg "github.com/docker/engine-api/types/registry"
 	"github.com/nhurel/dim/lib/utils"
 	"golang.org/x/net/context"
@@ -30,6 +31,7 @@ type Client interface {
 	Search(query, advanced string) error
 	WalkRepositories(repositories chan<- Repository) error
 	PrintImageInfo(out io.Writer, parsedName reference.Named, tpl *template.Template) error
+	DeleteImage(parsedName reference.Named) error
 }
 
 // RegistryClient implements Client interface
@@ -238,4 +240,29 @@ func (c *registryClient) PrintImageInfo(w io.Writer, parsedName reference.Named,
 	}
 
 	return tpl.Execute(w, info)
+}
+
+// DeleteImage deletes the image on the remote registry
+func (c *registryClient) DeleteImage(parsedName reference.Named) error {
+	logrus.WithField("parsedName", parsedName.String()).Debugln("Entering DeleteImage")
+	var repo Repository
+	var err error
+	name, _ := reference.ParseNamed(parsedName.Name()[strings.Index(parsedName.Name(), "/")+1:])
+	if repo, err = c.NewRepository(name); err != nil {
+		return err
+	}
+
+	tag := imageParser.GetTagFromNamedRef(parsedName)
+
+	if tag == "" {
+		tag = "latest"
+	}
+
+	logrus.Debugln("Deleting image")
+	if err = repo.DeleteImage(tag); err != nil {
+		logrus.WithError(err).Errorln("Failed to delete image on the remote registry")
+		return err
+	}
+
+	return nil
 }

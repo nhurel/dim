@@ -5,11 +5,9 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
-	imageParser "github.com/docker/engine-api/types/reference"
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 var deleteCommand = &cobra.Command{
@@ -25,6 +23,7 @@ var deleteCommand = &cobra.Command{
 		Dim.Remove(image)
 
 		if remoteFlag {
+
 			var parsedName reference.Named
 			var err error
 			if parsedName, err = reference.ParseNamed(image); err != nil || parsedName.Hostname() == "" {
@@ -35,7 +34,6 @@ var deleteCommand = &cobra.Command{
 			if username != "" || password != "" {
 				authConfig = &types.AuthConfig{Username: username, Password: password}
 			}
-
 			var client registry.Client
 
 			logrus.WithField("hostname", parsedName.Hostname()).Debugln("Connecting to registry")
@@ -44,27 +42,7 @@ var deleteCommand = &cobra.Command{
 				return fmt.Errorf("Failed to connect to registry : %v", err)
 			}
 
-			var repo registry.Repository
-			parsedName, _ = reference.ParseNamed(parsedName.Name()[strings.Index(parsedName.Name(), "/")+1:])
-			if repo, err = client.NewRepository(parsedName); err != nil {
-				return err
-			}
-
-			var tag string
-			if _, tag, err = imageParser.Parse(image); err != nil {
-				return err
-			}
-
-			if tag == "" {
-				tag = "latest"
-			}
-
-			logrus.Debugln("Deleting image")
-			if err = repo.DeleteImage(tag); err != nil {
-				logrus.WithError(err).Errorln("Failed to delete image on the remote registry")
-				return err
-			}
-
+			return client.DeleteImage(parsedName)
 		}
 
 		return nil

@@ -50,6 +50,10 @@ func (r *NoOpRegistryClient) PrintImageInfo(w io.Writer, parsedName reference.Na
 	return nil
 }
 
+func (r *NoOpRegistryClient) DeleteImage(parsedName reference.Named) error {
+	return nil
+}
+
 type NoOpRegistryRepository struct {
 	distribution.Repository
 	name string
