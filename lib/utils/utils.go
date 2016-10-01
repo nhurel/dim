@@ -88,6 +88,7 @@ func FilterValues(m map[string]string, s string) map[string]string {
 
 }
 
+// ReadCredentials ask the user to enter his login and password and stores the value in the given registryAuth
 func ReadCredentials(registryAuth *types.AuthConfig) {
 	logrus.WithFields(logrus.Fields{"Login": registryAuth.Username, "Password": registryAuth.Password}).Debugln("Reading new credentials")
 	if registryAuth.Username != "" {
@@ -111,6 +112,7 @@ func ReadCredentials(registryAuth *types.AuthConfig) {
 	registryAuth.Password = input
 }
 
+// BuildURL appends http:// or https:// to given hostname, according to the insecure parameter
 func BuildURL(hostname string, insecure bool) string {
 	if hostname == "" {
 		return ""

@@ -122,13 +122,14 @@ func (dc *DockerClient) Pull(image string) error {
 	return err
 }
 
-func (dc *DockerClient) Authenticate(registryUrl string) (string, error) {
+// Authenticate prompts the user his credentials until it can connect to the registry
+func (dc *DockerClient) Authenticate(registryURL string) (string, error) {
 
 	if dc.Auth == nil {
 		dc.Auth = &types.AuthConfig{}
 	}
 
-	req, _ := http.NewRequest(http.MethodGet, utils.BuildURL(fmt.Sprintf("%s/v2/", registryUrl), dc.Insecure), &bytes.Buffer{})
+	req, _ := http.NewRequest(http.MethodGet, utils.BuildURL(fmt.Sprintf("%s/v2/", registryURL), dc.Insecure), &bytes.Buffer{})
 	req.SetBasicAuth(dc.Auth.Username, dc.Auth.Password)
 	logrus.WithFields(logrus.Fields{"URL": req.URL, "Login": dc.Auth.Username, "Password": dc.Auth.Password}).Debugln("Testing credentials")
 	var resp *http.Response
