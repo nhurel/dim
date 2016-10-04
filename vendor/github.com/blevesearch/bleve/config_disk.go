@@ -7,22 +7,14 @@
 //  either express or implied. See the License for the specific language governing permissions
 //  and limitations under the License.
 
-package search
+// +build !appengine,!appenginevm
 
-import (
-	"time"
+package bleve
 
-	"github.com/blevesearch/bleve/index"
+import "github.com/blevesearch/bleve/index/store/boltdb"
 
-	"golang.org/x/net/context"
-)
-
-type Collector interface {
-	Collect(ctx context.Context, searcher Searcher, reader index.IndexReader) error
-	Results() DocumentMatchCollection
-	Total() uint64
-	MaxScore() float64
-	Took() time.Duration
-	SetFacetsBuilder(facetsBuilder *FacetsBuilder)
-	FacetResults() FacetResults
+// in normal environments we configure boltdb as the default storage
+func initDisk() {
+	// default kv store
+	Config.DefaultKVStore = boltdb.Name
 }

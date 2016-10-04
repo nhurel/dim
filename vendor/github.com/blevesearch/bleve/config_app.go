@@ -7,22 +7,12 @@
 //  either express or implied. See the License for the specific language governing permissions
 //  and limitations under the License.
 
-package search
+// +build appengine appenginevm
 
-import (
-	"time"
+package bleve
 
-	"github.com/blevesearch/bleve/index"
+// in the appengine environment we cannot support disk based indexes
+// so we do no extra configuration in this method
+func initDisk() {
 
-	"golang.org/x/net/context"
-)
-
-type Collector interface {
-	Collect(ctx context.Context, searcher Searcher, reader index.IndexReader) error
-	Results() DocumentMatchCollection
-	Total() uint64
-	MaxScore() float64
-	Took() time.Duration
-	SetFacetsBuilder(facetsBuilder *FacetsBuilder)
-	FacetResults() FacetResults
 }
