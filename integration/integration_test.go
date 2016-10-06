@@ -23,6 +23,7 @@ type testImages struct {
 	tag        string
 	labels     []string
 	labelsName []string
+	volumes    []string
 }
 
 var integration_label = testImages{
@@ -83,7 +84,7 @@ func (s *IntegrationTestSuite) TestLabelAndSearch(c *C) {
 			c.Log(string(err.(*exec.ExitError).Stderr))
 		}
 		c.Assert(err, IsNil)
-		re := regexp.MustCompile("httpd\\s*first")
+		re := regexp.MustCompile("httpd\\s*first\\s*first=true, framework=apache, type=web\\s*")
 		c.Assert(re.MatchString(string(result)), Equals, true)
 	}
 
@@ -140,6 +141,25 @@ func (s *IntegrationTestSuite) TestDeleteAndSearch(c *C) {
 	c.Assert(err, IsNil)
 	re := regexp.MustCompile("No result found")
 	//c.Assert(string(result), Matches, "\n.*0 Results found.*")
+	c.Assert(re.MatchString(string(result)), Equals, true)
+
+}
+
+func (s *IntegrationTestSuite) TestVolumeOutput(c *C) {
+	if o, err := runCommand(dimExec, "label", "-p", "redis:3.2.1-alpine", "-t", "localhost/redis:3.2.1-alpine", "-r", "-k", "type=database"); err != nil {
+		c.Error(o)
+		c.Fatal(err)
+	}
+
+	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
+
+	result, err := runCommand(dimExec, "search", "--registry-url=localhost", "-k", "redis")
+	c.Log(result)
+	if err != nil {
+		c.Log(string(err.(*exec.ExitError).Stderr))
+	}
+	c.Assert(err, IsNil)
+	re := regexp.MustCompile("redis\\s*3.2.1-alpine\\s*[/data]")
 	c.Assert(re.MatchString(string(result)), Equals, true)
 
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/docker/distribution/notifications"
 	"github.com/mailgun/manners"
 	"github.com/nhurel/dim/lib/index"
+	"github.com/nhurel/dim/types"
 	"net/http"
 	"strings"
 	"time"
@@ -21,50 +22,14 @@ type Server struct {
 	index *index.Index
 }
 
-// SearchResult describes a search result returned from a registry
-type SearchResult struct {
-	// StarCount indicates the number of stars this repository has (not supported in private registry)
-	StarCount int `json:"star_count"`
-	// IsOfficial is true if the result is from an official repository. (not supported in private registry)
-	IsOfficial bool `json:"is_official"`
-	// Name is the name of the repository
-	Name string `json:"name"`
-	// IsAutomated indicates whether the result is automated (not supported in private registry)
-	IsAutomated bool `json:"is_automated"`
-	// Description is a textual description of the repository (filled with the tag of the repo)
-	Description string `json:"description"`
-	// Tag identifie one version of the image
-	Tag string `json:"tag"`
-	// FullName stores the fully qualified name of the image
-	FullName string `json:"full_name"`
-	// Created is the time when the image was created
-	Created time.Time `json:"created"`
-	// Label is an array holding all the labels applied to  an image
-	Label map[string]string `json:"label"`
-	// Volumes is an array holding all volumes declared by the image
-	Volumes []string `json:"volumes"`
-	// Exposed port is an array containing all the ports exposed by an image
-	ExposedPorts []int `json:"exposed_ports"`
-	// Env is a map of all environment variables
-	Env map[string]string `json:"env"`
-	// Size is the size of the image
-	Size int64 `json:"size"`
-}
-
-// SearchResults lists a collection search results returned from a registry
-type SearchResults struct {
-	// Query contains the query string that generated the search results
-	Query string `json:"query"`
-	// NumResults indicates the number of results the query returned
-	NumResults int `json:"num_results"`
-	// Results is a slice containing the actual results for the search
-	Results []SearchResult `json:"results"`
-}
-
 // NewServer creates a new Server instance to listen on given port and use given index
 func NewServer(port string, index *index.Index) *Server {
 	http.HandleFunc("/v1/search", handler(index, Search))
 	http.HandleFunc("/dim/notify", handler(index, NotifyImageChange))
+	http.HandleFunc("/v2/_catalog", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "{}")
+	})
 	return &Server{manners.NewWithServer(&http.Server{Addr: port, Handler: http.DefaultServeMux}), index}
 }
 
@@ -145,7 +110,7 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := SearchResults{NumResults: int(sr.Total), Query: q}
+	results := types.SearchResults{NumResults: int(sr.Total), Query: q}
 	l.WithField("#results", results.NumResults).WithField("full", f).Debugln("Found results")
 
 	if results.Results, err = buildResults(i, sr, (f == "full")); err != nil {
@@ -161,9 +126,9 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func buildResults(i *index.Index, sr *bleve.SearchResult, fillDetails bool) ([]SearchResult, error) {
+func buildResults(i *index.Index, sr *bleve.SearchResult, fillDetails bool) ([]types.SearchResult, error) {
 	logrus.WithField("fillDetails", fillDetails).Debugln("Entering buildResult")
-	images := make([]SearchResult, 0, sr.Total)
+	images := make([]types.SearchResult, 0, sr.Total)
 	var err error
 	for _, h := range sr.Hits {
 		doc := h
@@ -211,9 +176,9 @@ func searchDetails(i *index.Index, doc *search.DocumentMatch) (*search.DocumentM
 	return sr.Hits[0], err
 }
 
-func documentToSearchResult(h *search.DocumentMatch) SearchResult {
+func documentToSearchResult(h *search.DocumentMatch) types.SearchResult {
 	logrus.WithField("hit", h).Debugln("Entering documentToSearchResult")
-	result := SearchResult{
+	result := types.SearchResult{
 		Name:        h.Fields["Name"].(string),
 		Description: h.Fields["Tag"].(string),
 		Tag:         h.Fields["Tag"].(string),

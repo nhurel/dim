@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/Sirupsen/logrus"
@@ -11,14 +10,15 @@ import (
 	"github.com/docker/docker/registry"
 	"github.com/docker/engine-api/types"
 	imageParser "github.com/docker/engine-api/types/reference"
-	reg "github.com/docker/engine-api/types/registry"
 	"github.com/nhurel/dim/lib/utils"
+	t "github.com/nhurel/dim/types"
 	"golang.org/x/net/context"
 	"io"
 	"io/ioutil"
-	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -93,52 +93,44 @@ func (c *registryClient) NewRepository(parsedName reference.Named) (Repository, 
 
 // Search runs a search against the registry, handling dim advanced querying option
 func (c *registryClient) Search(query, advanced string) error {
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
 	q := strings.TrimSpace(query)
 	a := strings.TrimSpace(advanced)
 	var err error
-	if q != "" {
-		if err = writer.WriteField("q", q); err != nil {
-			return err
-		}
-	}
-	if a != "" {
-		if err = writer.WriteField("a", a); err != nil {
-			return err
-		}
-	}
-	if err = writer.Close(); err != nil {
-		return err
-	}
-
-	var req *http.Request
-
-	if req, err = http.NewRequest(http.MethodPost, strings.Join([]string{c.registryURL, "/v1/search"}, ""), body); err != nil {
-		return fmt.Errorf("Failed to create request : %v", err)
-	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	var resp *http.Response
 
-	logrus.WithField("request", req.Body).Debugln("Sending request")
+	values := url.Values{}
+	if a != "" {
+		values.Set("a", a)
+	}
+	if q != "" {
+		values.Set("q", q)
+	}
+	values.Set("f", "full")
+
+	http.PostForm(strings.Join([]string{c.registryURL, "/v1/search"}, ""), values)
+
 	//FIXME  : Use http.PostForm("url", url.Values{"q": query, "a":advanced}) instead
 
 	httpClient := http.Client{Transport: c.transport}
-	if resp, err = httpClient.Do(req); err != nil {
+	if resp, err = httpClient.PostForm(strings.Join([]string{c.registryURL, "/v1/search"}, ""), values); err != nil {
 		return fmt.Errorf("Failed to send request : %v", err)
 	}
 	defer resp.Body.Close()
 	var b []byte
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
-		results := &reg.SearchResults{}
+		results := &t.SearchResults{}
 		if err := json.NewDecoder(resp.Body).Decode(results); err != nil {
 			return fmt.Errorf("Failed to parse response : %v", err)
 		}
 
-		t, _ := template.New("search").Parse(searchResultTemplate)
+		funcMap := template.FuncMap{
+			"flatMap": flatMap,
+		}
+		tpl, _ := template.New("search").Funcs(funcMap).Parse(searchResultTemplate)
+
 		w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
-		if err = t.Execute(w, results); err != nil {
+		if err = tpl.Execute(w, results); err != nil {
 			logrus.WithError(err).Errorln("Failed to parse template")
 		}
 		w.Flush()
@@ -151,11 +143,35 @@ func (c *registryClient) Search(query, advanced string) error {
 
 }
 
+func flatMap(m map[string]string) string {
+	if m == nil || len(m) == 0 {
+		return ""
+	}
+	entries := make([]string, 0, len(m))
+	for k, v := range m {
+		entries = append(entries, fmt.Sprintf("%s=%s", k, v))
+	}
+	sort.Sort(Alphabetical(entries))
+	return strings.Join(entries, ", ")
+}
+
+type Alphabetical []string
+
+func (a Alphabetical) Len() int {
+	return len(a)
+}
+func (a Alphabetical) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+func (a Alphabetical) Less(i, j int) bool {
+	return a[i] < a[j]
+}
+
 const searchResultTemplate = `
 {{- if gt .NumResults 0 -}}
 {{.NumResults}} Results found :
-Name	Tag	Automated	Official
-{{ range $i, $r := .Results}} {{- $r.Name}}	{{$r.Description}}	{{$r.IsAutomated}}	{{$r.IsOfficial}}
+Name	Tag	Labels	Volumes
+{{ range $i, $r := .Results}} {{- $r.Name}}	{{$r.Tag}}	{{$r.Label | flatMap}}	{{if $r.Volumes}}{{$r.Volumes}}{{end}}
 {{end}}
 {{else -}}No result found
 {{end -}}
