@@ -155,6 +155,7 @@ func flatMap(m map[string]string) string {
 	return strings.Join(entries, ", ")
 }
 
+// Alphabetical is a slice of string that can be sorted by alphabetical order
 type Alphabetical []string
 
 func (a Alphabetical) Len() int {
