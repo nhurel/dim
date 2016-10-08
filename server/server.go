@@ -89,9 +89,7 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	var err error
 	var b []byte
 
-	q := r.FormValue("q")
-	a := r.FormValue("a")
-	f := r.FormValue("f")
+	q, a, f := r.FormValue("q"), r.FormValue("a"), r.FormValue("f")
 
 	if q == "" && a == "" {
 		http.Error(w, "No search criteria provided", http.StatusBadRequest)
@@ -99,24 +97,18 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sr *bleve.SearchResult
-
-	request := bleve.NewSearchRequest(i.BuildQuery(q, a))
-	request.Fields = []string{"Name", "Tag", "FullName", "Labels", "Envs"}
-	l := logrus.WithField("request", request).WithField("query", request.Query)
-	l.Debugln("Running search")
-	if sr, err = i.Search(request); err != nil {
+	l := logrus.WithFields(logrus.Fields{"query": q, "advanced_query": a, "fillDetails": f})
+	l.Debugln("Searching image")
+	if sr, err = i.SearchImages(q, a, (f == "full")); err != nil {
 		http.Error(w, "An error occured while procesing your request", http.StatusInternalServerError)
 		l.WithError(err).Errorln("Error occured when processing search")
 		return
 	}
 
 	results := types.SearchResults{NumResults: int(sr.Total), Query: q}
-	l.WithField("#results", results.NumResults).WithField("full", f).Debugln("Found results")
+	l.WithField("#results", results.NumResults).Debugln("Found results")
 
-	if results.Results, err = buildResults(i, sr, (f == "full")); err != nil {
-		http.Error(w, "Error happened while building response", http.StatusInternalServerError)
-		return
-	}
+	results.Results = buildResults(sr)
 
 	if b, err = json.Marshal(results); err != nil {
 		http.Error(w, "Failed to serialize the response", http.StatusInternalServerError)
@@ -126,54 +118,12 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func buildResults(i *index.Index, sr *bleve.SearchResult, fillDetails bool) ([]types.SearchResult, error) {
-	logrus.WithField("fillDetails", fillDetails).Debugln("Entering buildResult")
+func buildResults(sr *bleve.SearchResult) []types.SearchResult {
 	images := make([]types.SearchResult, 0, sr.Total)
-	var err error
 	for _, h := range sr.Hits {
-		doc := h
-		if fillDetails {
-			if doc, err = searchDetails(i, doc); err != nil {
-				return images, err
-			}
-		}
-		images = append(images, documentToSearchResult(doc))
+		images = append(images, documentToSearchResult(h))
 	}
-	return images, nil
-}
-
-func searchDetails(i *index.Index, doc *search.DocumentMatch) (*search.DocumentMatch, error) {
-	logrus.WithField("doc", doc).Debugln("Entering searchDetails")
-	request := bleve.NewSearchRequest(bleve.NewDocIDQuery([]string{doc.ID}))
-	request.Fields = []string{"Name", "Tag", "FullName", "Volumes", "ExposedPorts", "Env", "Size"}
-	if doc.Fields["Labels"] != nil {
-		switch f := doc.Fields["Labels"].(type) {
-		case string:
-			request.Fields = append(request.Fields, fmt.Sprintf("Label.%s", f))
-		case []interface{}:
-			for _, f := range doc.Fields["Labels"].([]interface{}) {
-				request.Fields = append(request.Fields, fmt.Sprintf("Label.%s", f))
-			}
-		}
-	}
-	if doc.Fields["Envs"] != nil {
-		switch f := doc.Fields["Labels"].(type) {
-		case string:
-			request.Fields = append(request.Fields, fmt.Sprintf("Env.%s", f))
-		case []interface{}:
-			for _, f := range doc.Fields["Envs"].([]interface{}) {
-				request.Fields = append(request.Fields, fmt.Sprintf("Env.%s", f))
-			}
-		}
-	}
-
-	var sr *bleve.SearchResult
-	var err error
-	if sr, err = i.Search(request); err != nil {
-		return nil, fmt.Errorf("Failed to fetch all image info : %v", err)
-	}
-
-	return sr.Hits[0], err
+	return images
 }
 
 func documentToSearchResult(h *search.DocumentMatch) types.SearchResult {

@@ -1,8 +1,10 @@
 package index
 
 import (
+	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/search"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
@@ -156,4 +158,60 @@ func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {
 	logrus.WithField("queries", bq).Debugln("Returning query with should clauses")
 	return bleve.NewBooleanQuery(nil, bq, nil)
 
+}
+
+// SearchImages returns the images matching query. If fillDetails is true, it fetches all labels, ports and volumes information as well
+func (idx *Index) SearchImages(q, a string, fillDetails bool) (*bleve.SearchResult, error) {
+	var err error
+	var sr *bleve.SearchResult
+	request := bleve.NewSearchRequest(idx.BuildQuery(q, a))
+	request.Fields = []string{"Name", "Tag", "FullName", "Labels", "Envs"}
+	l := logrus.WithField("request", request).WithField("query", request.Query)
+	l.Debugln("Running search")
+	if sr, err = idx.Search(request); err != nil {
+		return sr, fmt.Errorf("Error occured when processing search : %v", err)
+	}
+
+	if fillDetails {
+		for i, h := range sr.Hits {
+			if sr.Hits[i], err = idx.searchDetails(h); err != nil {
+				return sr, fmt.Errorf("Error occured while searching details of an image : %x", err)
+			}
+		}
+	}
+	return sr, nil
+}
+
+func (idx *Index) searchDetails(doc *search.DocumentMatch) (*search.DocumentMatch, error) {
+	logrus.WithField("doc", doc).Debugln("Entering searchDetails")
+	request := bleve.NewSearchRequest(bleve.NewDocIDQuery([]string{doc.ID}))
+	request.Fields = []string{"Name", "Tag", "FullName", "Volumes", "ExposedPorts", "Env", "Size"}
+	if doc.Fields["Labels"] != nil {
+		switch f := doc.Fields["Labels"].(type) {
+		case string:
+			request.Fields = append(request.Fields, fmt.Sprintf("Label.%s", f))
+		case []interface{}:
+			for _, f := range doc.Fields["Labels"].([]interface{}) {
+				request.Fields = append(request.Fields, fmt.Sprintf("Label.%s", f))
+			}
+		}
+	}
+	if doc.Fields["Envs"] != nil {
+		switch f := doc.Fields["Labels"].(type) {
+		case string:
+			request.Fields = append(request.Fields, fmt.Sprintf("Env.%s", f))
+		case []interface{}:
+			for _, f := range doc.Fields["Envs"].([]interface{}) {
+				request.Fields = append(request.Fields, fmt.Sprintf("Env.%s", f))
+			}
+		}
+	}
+
+	var sr *bleve.SearchResult
+	var err error
+	if sr, err = idx.Search(request); err != nil {
+		return nil, fmt.Errorf("Failed to fetch all image info : %v", err)
+	}
+
+	return sr.Hits[0], err
 }
