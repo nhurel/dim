@@ -34,11 +34,18 @@ var showCommand = &cobra.Command{
 			return err
 		}
 
+		var output = os.Stdout
+		if outputFlag != "" {
+			if output, err = os.Create(outputFlag); err != nil {
+				return fmt.Errorf("Failed to open file %s : %v", outputFlag, err)
+			}
+		}
+		defer output.Close()
+
 		if remoteFlag {
 			var parsedName reference.Named
-			var err error
 			if parsedName, err = reference.ParseNamed(image); err != nil || parsedName.Hostname() == "" {
-				return fmt.Errorf("Fail to parse the name to delete the image on a remote repository %v", err)
+				return fmt.Errorf("Failed to parse the name to delete the image on a remote repository %v", err)
 			}
 
 			var authConfig *types.AuthConfig
@@ -53,24 +60,23 @@ var showCommand = &cobra.Command{
 				return fmt.Errorf("Failed to connect to registry : %v", err)
 			}
 
-			return client.PrintImageInfo(os.Stdout, parsedName, tpl)
+			return client.PrintImageInfo(output, parsedName, tpl)
 		}
 
-		return Dim.PrintImageInfo(os.Stdout, image, tpl)
+		return Dim.PrintImageInfo(output, image, tpl)
 	},
 }
 
-var templateFlag string
+var templateFlag, outputFlag string
 
 func init() {
-	//TODO Add --output flag to write in a file
 	showCommand.Flags().StringVarP(&templateFlag, "template", "t", "", "Template to use to display image info")
 	showCommand.Flags().BoolVarP(&remoteFlag, "remote", "r", false, "Show image from remote repository")
+	showCommand.Flags().StringVarP(&outputFlag, "output", "o", "", "Write output to file instead of stdout")
 	RootCommand.AddCommand(showCommand)
 }
 
-const infoTpl = `
-Name : {{range $i, $e := .RepoTags}} {{if eq $i  0}}{{$e}}{{end}}{{end}}
+const infoTpl = `Name : {{range $i, $e := .RepoTags}} {{if eq $i  0}}{{$e}}{{end}}{{end}}
 Id :  {{.ID}}
 Labels:
 {{range $k, $v := .Config.Labels}}{{$k}} = {{$v}}

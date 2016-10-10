@@ -4,6 +4,8 @@ import (
 	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	. "gopkg.in/check.v1"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"regexp"
 	"testing"
@@ -161,5 +163,48 @@ func (s *IntegrationTestSuite) TestVolumeOutput(c *C) {
 	c.Assert(err, IsNil)
 	re := regexp.MustCompile("redis\\s*3.2.1-alpine\\s*[/data]")
 	c.Assert(re.MatchString(string(result)), Equals, true)
+}
 
+func (s *IntegrationTestSuite) TestShowCommand(c *C) {
+	if o, err := runCommand(dimExec, "label", "-p", "redis:3.2.1-alpine", "-t", "localhost/redis:3.2.1-alpine", "-r", "-k", "type=database"); err != nil {
+		c.Error(o)
+		c.Fatal(err)
+	}
+
+	result, err := runCommand(dimExec, "show", "localhost/redis:3.2.1-alpine", "-k")
+
+	c.Assert(err, IsNil)
+	c.Assert(result, Equals, `Name :  localhost/redis:3.2.1-alpine
+Id :  sha256:d65f1dcf63b7475dd45368a0bbabbd67be61598a02a37815b6e9fcfcfbf67d14
+Labels:
+type = database
+
+Tags:
+localhost/redis:3.2.1-alpine
+
+Ports :
+6379/tcp = {}
+
+Volumes:
+/data = {}
+
+Env :
+ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ REDIS_VERSION=3.2.1
+ REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-3.2.1.tar.gz
+ REDIS_DOWNLOAD_SHA1=26c0fc282369121b4e278523fce122910b65fbbf
+
+Entrypoint : [docker-entrypoint.sh]
+Command : [redis-server]
+`)
+
+	_, err = runCommand(dimExec, "show", "localhost/redis:3.2.1-alpine", "-k", "-o", "show_test.out")
+	c.Assert(err, IsNil)
+
+	f, err := os.Open("show_test.out")
+	c.Assert(err, IsNil)
+	defer f.Close()
+	fc, err := ioutil.ReadAll(f)
+	c.Assert(err, IsNil)
+	c.Assert(result, Equals, string(fc))
 }
