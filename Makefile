@@ -1,37 +1,32 @@
 SHELL := /bin/bash
 BINARY=dim
 
-VET_DIR := ./cmd/... ./lib/... ./server/... ./wrapper/...
-DIR_SOURCES := cmd/... lib/... server/... wrapper/...
+VET_DIR := ./cmd/... ./lib/... ./server/... ./wrapper/... ./types/...
+DIR_SOURCES := cmd/... lib/... server/... wrapper/... types/...
 
 SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
 
 git_tag = $(shell git describe --tags --long | sed -e 's/-/./g' | awk -F '.' '{print $$1"."$$2"."$$3+$$4}')
-
-#VERSION=1.0.0
-#BUILD_TIME=`date +%FT%T%z`
-
-#LDFLAGS=-ldflags "-X github.com/ariejan/roll/core.Version=${VERSION} -X github.com/ariejan/roll/core.BuildTime=${BUILD_TIME}"
 
 default: $(BINARY)
 
 all: clean fmt lint vet test dim integration_tests docker install
 
 $(BINARY): $(SOURCES)
-	CGO_ENABLED=0 go build -a -installsuffix cgo -o $(BINARY) -ldflags "-X main.Version=$(git_tag)" .
+	CGO_ENABLED=0 go build -a -installsuffix cgo -o $(BINARY) -ldflags "-s -X main.Version=$(git_tag)" .
 
 distribution:
 	rm -rf dist && mkdir -p dist
-	GOOS=linux GOARCH=amd64 go build -o dist/$(BINARY)-linux -ldflags "-X main.Version=$(git_tag)" .
-	GOOS=windows GOARCH=amd64 go build -o dist/$(BINARY)-windows.exe -ldflags "-X main.Version=$(git_tag)" .
-	GOOS=darwin GOARCH=amd64 go build -o dist/$(BINARY)-darwin  -ldflags "-X main.Version=$(git_tag)" .
+	GOOS=linux GOARCH=amd64 go build -o dist/$(BINARY)-linux -ldflags "-s -X main.Version=$(git_tag)" .
+	GOOS=windows GOARCH=amd64 go build -o dist/$(BINARY)-windows.exe -ldflags "-s -X main.Version=$(git_tag)" .
+	GOOS=darwin GOARCH=amd64 go build -o dist/$(BINARY)-darwin  -ldflags "-s -X main.Version=$(git_tag)" .
 
 
 docker: $(BINARY)
 	docker build -t nhurel/dim:$(git_tag) .
 
 install:
-	go install -ldflags "-X main.Version=$(git_tag)"
+	go install -ldflags "-s -X main.Version=$(git_tag)"
 
 .PHONY: clean install vet lint fmt
 
