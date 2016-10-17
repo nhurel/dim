@@ -14,7 +14,8 @@ import (
 )
 
 var showCommand = &cobra.Command{
-	Use: "show image",
+	Use:   "show IMAGE",
+	Short: "Shows details about an image",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return fmt.Errorf("image name is missing")

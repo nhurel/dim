@@ -10,7 +10,8 @@ import (
 )
 
 var searchCommand = &cobra.Command{
-	Use: "search query",
+	Use:   "search QUERY",
+	Short: "Run a search against a private registry",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return errors.New("query is missing")

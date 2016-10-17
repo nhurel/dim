@@ -11,7 +11,7 @@ import (
 )
 
 var deleteCommand = &cobra.Command{
-	Use:   "delete image",
+	Use:   "delete IMAGE",
 	Short: "Deletes an image",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {

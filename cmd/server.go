@@ -14,7 +14,8 @@ import (
 )
 
 var serverCommand = &cobra.Command{
-	Use: "server",
+	Use:   "server",
+	Short: "Runs in server mode to provide search feature",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		handleSignal()
 
