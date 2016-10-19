@@ -108,10 +108,6 @@ func (c *registryClient) Search(query, advanced string) error {
 	}
 	values.Set("f", "full")
 
-	http.PostForm(strings.Join([]string{c.registryURL, "/v1/search"}, ""), values)
-
-	//FIXME  : Use http.PostForm("url", url.Values{"q": query, "a":advanced}) instead
-
 	httpClient := http.Client{Transport: c.transport}
 	if resp, err = httpClient.PostForm(strings.Join([]string{c.registryURL, "/v1/search"}, ""), values); err != nil {
 		return fmt.Errorf("Failed to send request : %v", err)
