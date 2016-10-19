@@ -203,7 +203,7 @@ Command : [redis-server]
 
 	f, err := os.Open("show_test.out")
 	c.Assert(err, IsNil)
-	defer f.Close()
+	defer os.Remove(f.Name())
 	fc, err := ioutil.ReadAll(f)
 	c.Assert(err, IsNil)
 	c.Assert(result, Equals, string(fc))
