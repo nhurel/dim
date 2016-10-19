@@ -132,9 +132,14 @@ func (idx *Index) DeleteImage(id string) {
 }
 
 // BuildQuery returns the query object corresponding to given parameters
-func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {
+func BuildQuery(nameTag, advanced string) bleve.Query {
 	l := logrus.WithFields(logrus.Fields{"nameTag": nameTag, "advanced": advanced})
 	l.Debugln("Building query clause")
+
+	if nameTag == "*" || advanced == "*" {
+		return bleve.NewMatchAllQuery()
+	}
+
 	bq := make([]bleve.Query, 0, 3)
 
 	name := nameTag
@@ -164,7 +169,7 @@ func (idx *Index) BuildQuery(nameTag, advanced string) bleve.Query {
 func (idx *Index) SearchImages(q, a string, fillDetails bool) (*bleve.SearchResult, error) {
 	var err error
 	var sr *bleve.SearchResult
-	request := bleve.NewSearchRequest(idx.BuildQuery(q, a))
+	request := bleve.NewSearchRequest(BuildQuery(q, a))
 	request.Fields = []string{"Name", "Tag", "FullName", "Labels", "Envs"}
 	l := logrus.WithField("request", request).WithField("query", request.Query)
 	l.Debugln("Running search")

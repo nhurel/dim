@@ -149,11 +149,12 @@ func (s *TestSuite) TestNameTagSearch(c *C) {
 		{"apache2", []string{}},
 		{"mysql:5.7", []string{"mysql"}},
 		{"http*:2.4", []string{"httpd"}},
+		{"*", []string{"centos", "httpd", "mysql"}},
 	}
 
 	for _, t := range tests {
 		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(s.index.BuildQuery(t.query, ""))
+		request := bleve.NewSearchRequest(BuildQuery(t.query, ""))
 		request.Fields = []string{"Name", "Tag"}
 		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)
@@ -186,11 +187,12 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 		{"Envs:HTTPD_PREFIX", []string{"httpd"}},
 		{"Envs:HTTP*", []string{"httpd"}},
 		{"apache", []string{"httpd"}},
+		{"*", []string{"centos", "httpd", "mysql"}},
 	}
 
 	for _, t := range tests {
 		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(s.index.BuildQuery("", t.query))
+		request := bleve.NewSearchRequest(BuildQuery("", t.query))
 		request.Fields = []string{"Name", "Tag"}
 		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)
@@ -202,61 +204,3 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 		}
 	}
 }
-
-//func (s *TestSuite) TestAdvancedSearchResults(c *C) {
-//	var tests = []struct {
-//		query  string
-//		result Image
-//	}{
-//		{"Name:mysql", images[2]},
-//{"Tag:5.7", []string{"mysql"}},
-//{"Env.MYSQL_VERSION:5.7.9-1debian8", []string{"mysql"}},
-//{"Env.MYSQL_VERSION:5.7.9", []string{"mysql"}},
-//{"Label.family:debian", []string{"httpd", "mysql"}},
-//{"Label.type:base", []string{"centos"}},
-//{"Labels:type", []string{"centos", "httpd", "mysql"}},
-//{"Labels:/frame.*/", []string{"httpd", "mysql"}},
-//{"Labels:frame*", []string{"httpd", "mysql"}},
-//{"Env.HTTPD_VERSION:2*", []string{"httpd"}},
-//{"Env.HTTPD_VERSION:2.*", []string{"httpd"}},
-//{"Env.HTTPD_VERSION:/*/", []string{"httpd"}},
-//{"Envs:HTTPD_PREFIX", []string{"httpd"}},
-//{"Envs:HTTP*", []string{"httpd"}},
-//{"apache", []string{"httpd"}},
-//	}
-
-//	for _, t := range tests {
-//		c.Logf("Test with query %s", t.query)
-//		request := bleve.NewSearchRequest(s.index.BuildQuery("", t.query))
-//		request.Fields = []string{"Name", "Tag", "Labels", "ExposedPorts", "Volumes"}
-//		results, err := s.index.Search(request)
-//		c.Assert(err, IsNil)
-//		c.Log(results)
-//		c.Assert(results.Total, Equals, uint64(1))
-//
-//		c.Assert(results.Hits[0].Fields["Name"].(string), Equals, t.result.Name)
-//		c.Assert(results.Hits[0].Fields["Tag"].(string), Equals, t.result.Tag)
-//
-//		request = bleve.NewSearchRequest(bleve.NewDocIDQuery([]string{results.Hits[0].ID}))
-//		//fields := make([]string, 0, len(results.Hits[0].Fields["Labels"].([]string)))
-//		fields := []string{"Name", "Tag", "Labels", "ExposedPorts", "Volumes", "FullName"}
-//		for _, f := range results.Hits[0].Fields["Labels"].([]interface{}) {
-//			fields = append(fields, fmt.Sprintf("Label.%s", f))
-//		}
-
-//		request.Fields = fields
-//		request.Explain = true
-//		results, err = s.index.Search(request)
-//		c.Assert(err, IsNil)
-//		c.Log(request)
-//		c.Log(results)
-//		c.Assert(results.Total, Equals, uint64(1))
-
-//		for k, v := range results.Hits[0].Fields {
-//			c.Log("key=", k, " value=", v)
-//		}
-
-//		c.Assert(results.Hits[0].Fields["Label"], DeepEquals, t.result.Label)
-
-//	}
-//}
