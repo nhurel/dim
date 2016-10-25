@@ -5,6 +5,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/howeyc/gopass"
+	"sort"
 	"strings"
 )
 
@@ -127,4 +128,17 @@ func BuildURL(hostname string, insecure bool) string {
 	}
 	return fmt.Sprintf("%s://%s", protocol, hostname)
 
+}
+
+// FlatMap returns a string representation of a map
+func FlatMap(m map[string]string) string {
+	if m == nil || len(m) == 0 {
+		return ""
+	}
+	entries := make([]string, 0, len(m))
+	for k, v := range m {
+		entries = append(entries, fmt.Sprintf("%s=%s", k, v))
+	}
+	sort.Strings(entries)
+	return strings.Join(entries, ", ")
 }

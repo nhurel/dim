@@ -1,8 +1,8 @@
 SHELL := /bin/bash
 BINARY=dim
 
-VET_DIR := ./cmd/... ./lib/... ./server/... ./wrapper/... ./types/...
-DIR_SOURCES := cmd/... lib/... server/... wrapper/... types/...
+VET_DIR := ./cli/... ./cmd/... ./lib/... ./server/... ./wrapper/... ./types/...
+DIR_SOURCES := cli/... cmd/... lib/... server/... wrapper/... types/...
 
 SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
 
@@ -26,6 +26,7 @@ docker: $(BINARY)
 	docker build -t nhurel/dim:$(git_tag) .
 
 install:
+	go clean -i
 	go install -ldflags "-s -X main.Version=$(git_tag)"
 
 .PHONY: clean install vet lint fmt

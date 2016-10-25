@@ -56,7 +56,7 @@ func runCommand(command string, args ...interface{}) (string, error) {
 		}
 	}
 
-	o, err := exec.Command(command, params...).Output()
+	o, err := exec.Command(command, params...).CombinedOutput()
 	return string(o), err
 
 }

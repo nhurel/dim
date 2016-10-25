@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types/container"
 	"github.com/nhurel/dim/lib/registry"
+	"github.com/nhurel/dim/types"
 	. "gopkg.in/check.v1"
 	"io"
 	"sync"
@@ -38,8 +39,8 @@ func (r *NoOpRegistryClient) Repositories(ctx context.Context, repos []string, l
 func (r *NoOpRegistryClient) NewRepository(parsedName reference.Named) (registry.Repository, error) {
 	return &NoOpRegistryRepository{name: parsedName.Name()}, nil
 }
-func (r *NoOpRegistryClient) Search(query, advanced string) error {
-	return nil
+func (r *NoOpRegistryClient) Search(query, advanced string, offset, numResults int) (*types.SearchResults, error) {
+	return nil, nil
 }
 
 func (r *NoOpRegistryClient) WalkRepositories(repositories chan<- registry.Repository) error {

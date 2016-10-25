@@ -12,6 +12,7 @@ import (
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/types"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -91,6 +92,13 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 
 	q, a, f := r.FormValue("q"), r.FormValue("a"), r.FormValue("f")
 
+	// No error handling here. Using defaults if wrong params given
+	offset, _ := strconv.Atoi(r.FormValue("offset"))
+	maxResults, _ := strconv.Atoi(r.FormValue("maxResults"))
+	if maxResults == 0 {
+		maxResults = 10
+	}
+
 	if q == "" && a == "" {
 		http.Error(w, "No search criteria provided", http.StatusBadRequest)
 		return
@@ -99,7 +107,7 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	var sr *bleve.SearchResult
 	l := logrus.WithFields(logrus.Fields{"query": q, "advanced_query": a, "fillDetails": f})
 	l.Debugln("Searching image")
-	if sr, err = i.SearchImages(q, a, (f == "full")); err != nil {
+	if sr, err = i.SearchImages(q, a, (f == "full"), offset, maxResults); err != nil {
 		http.Error(w, "An error occured while procesing your request", http.StatusInternalServerError)
 		l.WithError(err).Errorln("Error occured when processing search")
 		return

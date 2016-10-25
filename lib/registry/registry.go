@@ -17,10 +17,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
-	"sort"
+	"strconv"
 	"strings"
-	"text/tabwriter"
 	"text/template"
 )
 
@@ -28,7 +26,7 @@ import (
 type Client interface {
 	client.Registry
 	NewRepository(parsedName reference.Named) (Repository, error)
-	Search(query, advanced string) error
+	Search(query, advanced string, offset, maxResults int) (*t.SearchResults, error)
 	WalkRepositories(repositories chan<- Repository) error
 	PrintImageInfo(out io.Writer, parsedName reference.Named, tpl *template.Template) error
 	DeleteImage(parsedName reference.Named) error
@@ -92,7 +90,7 @@ func (c *registryClient) NewRepository(parsedName reference.Named) (Repository, 
 }
 
 // Search runs a search against the registry, handling dim advanced querying option
-func (c *registryClient) Search(query, advanced string) error {
+func (c *registryClient) Search(query, advanced string, offset, maxResults int) (*t.SearchResults, error) {
 	q := strings.TrimSpace(query)
 	a := strings.TrimSpace(advanced)
 	var err error
@@ -107,72 +105,27 @@ func (c *registryClient) Search(query, advanced string) error {
 		values.Set("q", q)
 	}
 	values.Set("f", "full")
+	values.Set("offset", strconv.Itoa(offset))
+	values.Set("maxResults", strconv.Itoa(maxResults))
 
 	httpClient := http.Client{Transport: c.transport}
 	if resp, err = httpClient.PostForm(strings.Join([]string{c.registryURL, "/v1/search"}, ""), values); err != nil {
-		return fmt.Errorf("Failed to send request : %v", err)
+		return nil, fmt.Errorf("Failed to send request : %v", err)
 	}
 	defer resp.Body.Close()
 	var b []byte
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
 		results := &t.SearchResults{}
 		if err := json.NewDecoder(resp.Body).Decode(results); err != nil {
-			return fmt.Errorf("Failed to parse response : %v", err)
+			return nil, fmt.Errorf("Failed to parse response : %v", err)
 		}
 
-		funcMap := template.FuncMap{
-			"flatMap": flatMap,
-		}
-		tpl, _ := template.New("search").Funcs(funcMap).Parse(searchResultTemplate)
-
-		w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
-		if err = tpl.Execute(w, results); err != nil {
-			logrus.WithError(err).Errorln("Failed to parse template")
-		}
-		w.Flush()
-
-	} else {
-		b, _ = ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("Server returned an error : %s", string(b))
+		return results, nil
 	}
-	return nil
 
+	b, _ = ioutil.ReadAll(resp.Body)
+	return nil, fmt.Errorf("Server returned an error : %s", string(b))
 }
-
-func flatMap(m map[string]string) string {
-	if m == nil || len(m) == 0 {
-		return ""
-	}
-	entries := make([]string, 0, len(m))
-	for k, v := range m {
-		entries = append(entries, fmt.Sprintf("%s=%s", k, v))
-	}
-	sort.Sort(Alphabetical(entries))
-	return strings.Join(entries, ", ")
-}
-
-// Alphabetical is a slice of string that can be sorted by alphabetical order
-type Alphabetical []string
-
-func (a Alphabetical) Len() int {
-	return len(a)
-}
-func (a Alphabetical) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-func (a Alphabetical) Less(i, j int) bool {
-	return a[i] < a[j]
-}
-
-const searchResultTemplate = `
-{{- if gt .NumResults 0 -}}
-{{.NumResults}} Results found :
-Name	Tag	Labels	Volumes
-{{ range $i, $r := .Results}} {{- $r.Name}}	{{$r.Tag}}	{{$r.Label | flatMap}}	{{if $r.Volumes}}{{$r.Volumes}}{{end}}
-{{end}}
-{{else -}}No result found
-{{end -}}
-`
 
 // WalkRepositories walks through all repositories and send them in the given channel
 func (c *registryClient) WalkRepositories(repositories chan<- Repository) error {

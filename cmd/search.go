@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
+	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib/registry"
+	"github.com/nhurel/dim/lib/utils"
+	t "github.com/nhurel/dim/types"
 	"github.com/spf13/cobra"
+	"os"
+	"strings"
 )
 
 var searchCommand = &cobra.Command{
@@ -39,13 +44,49 @@ var searchCommand = &cobra.Command{
 			q = query
 		}
 
-		return client.Search(q, a)
+		var results *t.SearchResults
+		if results, err = client.Search(q, a, 0, paginationFlag); err != nil {
+			return fmt.Errorf("Failed to search images : %v", err)
+		}
+
+		if results.NumResults > 0 {
+			fmt.Fprintf(os.Stderr, "%d results found :\n", results.NumResults)
+			printer := cli.NewTabPrinter(os.Stdout)
+			printer.Width = widthFlag
+			printer.Append([]string{"Name", "Tag", "Labels", "Volumes"})
+			for _, r := range results.Results {
+				printer.Append([]string{r.Name, r.Tag, utils.FlatMap(r.Label), strings.Join(r.Volumes, ",")})
+			}
+			printer.PrintAll(false)
+			for fetched := len(results.Results); results.NumResults > fetched; {
+				if results, err = client.Search(q, a, fetched, paginationFlag); err != nil {
+					return fmt.Errorf("Failed to search images : %v", err)
+				}
+				for _, r := range results.Results {
+					printer.Append([]string{r.Name, r.Tag, utils.FlatMap(r.Label), strings.Join(r.Volumes, ",")})
+				}
+				printer.PrintAll(true)
+				fetched += len(results.Results)
+			}
+			fmt.Println()
+		} else {
+			fmt.Fprintln(os.Stderr, "No result found")
+		}
+
+		return nil
+
 	},
 }
 
-var advancedFlag bool
+var (
+	advancedFlag   bool
+	paginationFlag int
+	widthFlag      int
+)
 
 func init() {
 	searchCommand.Flags().BoolVarP(&advancedFlag, "advanced", "a", false, "Runs complex query")
+	searchCommand.Flags().IntVar(&paginationFlag, "bulk-size", 15, "Number of restuls to fetch at a time")
+	searchCommand.Flags().IntVarP(&widthFlag, "width", "W", 80, "Column width")
 	RootCommand.AddCommand(searchCommand)
 }

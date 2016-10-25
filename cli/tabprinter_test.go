@@ -1,0 +1,86 @@
+package cli
+
+import (
+	"bytes"
+	"os"
+	"testing"
+)
+
+func TestPrintAll(t *testing.T) {
+	writer := bytes.NewBufferString("")
+	printer := NewTabPrinter(writer)
+	printer.Append([]string{"ABCDE", "ABCDE", "ABCDE", "ABCDE", "ABCDE"})
+	printer.Width = 30
+	printer.Separator = '+'
+
+	printer.PrintAll(false)
+
+	if writer.String() != "ABCDE+ABCDE+ABCDE+ABCDE+ABCDE" {
+		t.Errorf("PrintAll returned %s instead of %s", writer.String(), "ABCDE+ABCDE+ABCDE+ABCDE+ABCDE")
+	}
+}
+
+func TestFormat(t *testing.T) {
+	tests := []struct {
+		original string
+		length   int
+		expected string
+	}{
+		{"short", 10, "short     "},
+		{"stringtoolong", 10, "stringt..."},
+		{"goodstring", 10, "goodstring"},
+	}
+
+	for _, test := range tests {
+		got := format(test.original, test.length)
+		if len(got) != test.length {
+			t.Errorf("format returned a string of %d chars instead of %d", len(got), test.length)
+		}
+		if got != test.expected {
+			t.Errorf("format returned '%s' instead of '%s'", got, test.expected)
+		}
+	}
+}
+
+func TestComputeWidths(t *testing.T) {
+	printer := NewTabPrinter(os.Stdout)
+	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Width = 80
+	printer.Separator = '|'
+
+	printer.computeWidths()
+
+	expected := []int{17, 8, 38, 12}
+	for i := 0; i < 4; i++ {
+		if printer.widths[i] != expected[i] {
+			t.Errorf("printer computed wrong widths : Got %v instead of %v", printer.widths, expected)
+			break
+		}
+	}
+
+	// Results should be the same even when some values are missing :
+	printer = NewTabPrinter(os.Stdout)
+	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Append([]string{"", "ABCD", "", "ABCDEF"})
+	printer.Append([]string{"ABCDEFGH", "", "ABCDEFGHIJKLMNOPQR", ""})
+	printer.Append([]string{"ABCDEFGH", "ABCD", "", "ABCDEF"})
+	printer.Append([]string{"", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Append([]string{"ABCDEFGH", "", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
+	printer.Width = 80
+	printer.Separator = '|'
+
+	printer.computeWidths()
+
+	for i := 0; i < 4; i++ {
+		if printer.widths[i] != expected[i] {
+			t.Errorf("printer computed wrong widths : Got %v instead of %v", printer.widths, expected)
+			break
+		}
+	}
+
+}

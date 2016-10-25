@@ -166,10 +166,10 @@ func BuildQuery(nameTag, advanced string) bleve.Query {
 }
 
 // SearchImages returns the images matching query. If fillDetails is true, it fetches all labels, ports and volumes information as well
-func (idx *Index) SearchImages(q, a string, fillDetails bool) (*bleve.SearchResult, error) {
+func (idx *Index) SearchImages(q, a string, fillDetails bool, offset, maxResults int) (*bleve.SearchResult, error) {
 	var err error
 	var sr *bleve.SearchResult
-	request := bleve.NewSearchRequest(BuildQuery(q, a))
+	request := bleve.NewSearchRequestOptions(BuildQuery(q, a), maxResults, offset, false)
 	request.Fields = []string{"Name", "Tag", "FullName", "Labels", "Envs"}
 	l := logrus.WithField("request", request).WithField("query", request.Query)
 	l.Debugln("Running search")
