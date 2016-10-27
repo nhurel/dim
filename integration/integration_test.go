@@ -1,15 +1,16 @@
 package integration
 
 import (
-	"github.com/nhurel/dim/lib"
-	"github.com/nhurel/dim/wrapper/dockerClient"
-	. "gopkg.in/check.v1"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/nhurel/dim/lib"
+	"github.com/nhurel/dim/wrapper/dockerClient"
+	. "gopkg.in/check.v1"
 )
 
 type IntegrationTestSuite struct {

@@ -1,13 +1,14 @@
 package index
 
 import (
+	"testing"
+	"time"
+
 	"github.com/docker/docker/image"
 	"github.com/docker/engine-api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/nhurel/dim/lib/registry"
 	. "gopkg.in/check.v1"
-	"testing"
-	"time"
 )
 
 type ImageTestSuite struct {

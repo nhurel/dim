@@ -3,6 +3,11 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/search"
@@ -11,10 +16,6 @@ import (
 	"github.com/mailgun/manners"
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/types"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // Server type handle  indexation of a docker registry and serves the search endpoint

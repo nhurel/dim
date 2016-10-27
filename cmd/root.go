@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib"
@@ -9,8 +12,6 @@ import (
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
-	"strings"
 )
 
 // RootCommand is the main cobraCommand all other commands are attached to

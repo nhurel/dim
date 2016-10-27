@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"text/template"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/utils/templates"
@@ -9,8 +12,6 @@ import (
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/spf13/cobra"
-	"os"
-	"text/template"
 )
 
 var showCommand = &cobra.Command{

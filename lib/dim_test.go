@@ -2,9 +2,10 @@ package dim
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/container"
-	"testing"
 )
 
 func TestAddLabel(t *testing.T) {

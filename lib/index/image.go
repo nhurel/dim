@@ -2,6 +2,9 @@ package index
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/analysis/analyzers/keyword_analyzer"
@@ -10,8 +13,6 @@ import (
 	"github.com/blevesearch/bleve/analysis/datetime_parsers/datetime_optional"
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/lib/utils"
-	"strings"
-	"time"
 )
 
 // Image modeling for indexation

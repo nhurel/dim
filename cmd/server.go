@@ -2,15 +2,16 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"path"
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/server"
 	"github.com/spf13/cobra"
-	"os"
-	"os/signal"
-	"path"
-	"time"
 )
 
 var serverCommand = &cobra.Command{

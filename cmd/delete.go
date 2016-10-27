@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"

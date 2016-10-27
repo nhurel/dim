@@ -5,6 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"strings"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/builder"
 	"github.com/docker/docker/pkg/ioutils"
@@ -15,10 +20,6 @@ import (
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/utils"
 	"golang.org/x/net/context"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"strings"
 )
 
 // Docker interface exposes the method used to interact with the docker daemon

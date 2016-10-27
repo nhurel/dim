@@ -3,6 +3,14 @@ package registry
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"text/template"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/registry/client"
@@ -13,13 +21,6 @@ import (
 	"github.com/nhurel/dim/lib/utils"
 	t "github.com/nhurel/dim/types"
 	"golang.org/x/net/context"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
-	"text/template"
 )
 
 // Client defines method to interact with a registry

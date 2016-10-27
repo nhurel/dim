@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/spf13/cobra"
 )

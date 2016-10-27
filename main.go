@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/nhurel/dim/cmd"
 	"os"
+
+	"github.com/nhurel/dim/cmd"
 )
 
 // Version stores current version of dim (see Makefile)

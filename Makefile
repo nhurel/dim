@@ -46,6 +46,7 @@ lint: fmt
 	golint main.go
 
 fmt:
+	goimports -w .
 	go fmt ./...
 
 

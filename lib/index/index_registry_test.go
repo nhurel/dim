@@ -2,6 +2,11 @@ package index
 
 import (
 	"fmt"
+	"io"
+	"sync"
+	"testing"
+	"text/template"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/docker/distribution"
@@ -15,10 +20,6 @@ import (
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/types"
 	. "gopkg.in/check.v1"
-	"io"
-	"sync"
-	"testing"
-	"text/template"
 )
 
 type RegistrySuite struct {

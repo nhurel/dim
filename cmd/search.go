@@ -3,6 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
@@ -10,8 +13,6 @@ import (
 	"github.com/nhurel/dim/lib/utils"
 	t "github.com/nhurel/dim/types"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 var searchCommand = &cobra.Command{

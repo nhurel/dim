@@ -2,11 +2,12 @@ package utils
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/howeyc/gopass"
-	"sort"
-	"strings"
 )
 
 // ListContains checks a list of string contains a given string

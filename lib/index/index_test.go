@@ -1,13 +1,14 @@
 package index
 
 import (
-	"github.com/Sirupsen/logrus"
-	"github.com/blevesearch/bleve"
-	. "gopkg.in/check.v1"
 	"path"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/blevesearch/bleve"
+	. "gopkg.in/check.v1"
 )
 
 type TestSuite struct {

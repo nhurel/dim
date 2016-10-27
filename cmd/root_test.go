@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Sirupsen/logrus"
 	"testing"
+
+	"github.com/Sirupsen/logrus"
 )
 
 func TestGuessTag(t *testing.T) {

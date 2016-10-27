@@ -2,13 +2,14 @@ package dim
 
 import (
 	"fmt"
+	"io"
+	"strings"
+	"text/template"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/nhurel/dim/wrapper/dockerClient"
-	"io"
-	"strings"
-	"text/template"
 )
 
 // Dim is the client type that handle all client side interaction with docker daemon

@@ -2,6 +2,9 @@ package index
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/search"
@@ -9,8 +12,6 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/registry"
-	"strings"
-	"sync"
 )
 
 // Index manages indexation of docker images

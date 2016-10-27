@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/digest"
