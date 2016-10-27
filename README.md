@@ -1,4 +1,4 @@
-# DIM
+# Docker Image Manager
 
 DIM is a Docker Image Management utility. It's the perfect companion for your self-hosted private registry and provides useful commands to manage your docker images :
 - [Advanced search](#advanced-searches) 
@@ -229,6 +229,12 @@ Use the `Tag:` or `Name:` prefix to search for images by tag or name
 ```bash
 dim search -a Tag:vivid
 dim search -a Name:ubuntu
+```
+
+### Search image by creation date
+Use the `Created` field to search image created between dates.
+```bash
+dim search -a '+Created:>"2016-01-01" +Created:<"2016-02-01"'
 ```
 
 ### Combining search criteria
