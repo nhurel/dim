@@ -63,7 +63,7 @@ func (idx *Index) Build() <-chan bool {
 			go func(repo registry.Repository) {
 				defer submitWg.Done()
 				for img := range repo.WalkImages() {
-					images <- &repoImage{repository.Named().Name(), img}
+					images <- &repoImage{repo.Named().Name(), img}
 				}
 			}(repository)
 		}
