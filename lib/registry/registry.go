@@ -28,7 +28,7 @@ type Client interface {
 	client.Registry
 	NewRepository(parsedName reference.Named) (Repository, error)
 	Search(query, advanced string, offset, maxResults int) (*t.SearchResults, error)
-	WalkRepositories(repositories chan<- Repository) error
+	WalkRepositories() <-chan Repository
 	PrintImageInfo(out io.Writer, parsedName reference.Named, tpl *template.Template) error
 	DeleteImage(parsedName reference.Named) error
 }
@@ -133,50 +133,53 @@ func (c *registryClient) Search(query, advanced string, offset, maxResults int) 
 }
 
 // WalkRepositories walks through all repositories and send them in the given channel
-func (c *registryClient) WalkRepositories(repositories chan<- Repository) error {
-	return WalkRepositories(c, repositories)
+func (c *registryClient) WalkRepositories() <-chan Repository {
+	return WalkRepositories(c)
 }
 
 // WalkRepositories walks through all repositories and ssend them in the given channel
-func WalkRepositories(c Client, repositories chan<- Repository) error {
-	var err error
+func WalkRepositories(c Client) <-chan Repository {
+	repositories := make(chan Repository)
 
-	var n int
-	registries := make([]string, 20)
-	defer close(repositories)
-	last := ""
-	for stop := false; !stop; {
+	go func() {
+		var err error
+		defer close(repositories)
+		var n int
+		registries := make([]string, 20)
+		last := ""
+		for stop := false; !stop; {
 
-		if n, err = c.Repositories(nil, registries, last); err != nil && err != io.EOF {
-			logrus.WithField("n", n).WithError(err).Errorln("Failed to get repostories")
-			return err
-		}
-
-		stop = (err == io.EOF)
-
-		for i := 0; i < n; i++ {
-			last = registries[i]
-
-			var parsedName reference.Named
-
-			l := logrus.WithField("repository", last)
-			l.Infoln("Indexing repository")
-			if parsedName, err = reference.ParseNamed(last); err != nil {
-				logrus.WithError(err).WithField("name", last).Errorln("Failed to parse repository name")
+			if n, err = c.Repositories(nil, registries, last); err != nil && err != io.EOF {
+				logrus.WithField("n", n).WithError(err).Errorln("Failed to get repostories")
 				continue
 			}
 
-			var repository Repository
+			stop = (err == io.EOF)
 
-			if repository, err = c.NewRepository(parsedName); err != nil {
-				logrus.WithError(err).WithField("name", last).Errorln("Failed to fetch repository info")
-				continue
+			for i := 0; i < n; i++ {
+				last = registries[i]
+
+				var parsedName reference.Named
+
+				l := logrus.WithField("repository", last)
+				l.Infoln("Indexing repository")
+				if parsedName, err = reference.ParseNamed(last); err != nil {
+					logrus.WithError(err).WithField("name", last).Errorln("Failed to parse repository name")
+					continue
+				}
+
+				var repository Repository
+
+				if repository, err = c.NewRepository(parsedName); err != nil {
+					logrus.WithError(err).WithField("name", last).Errorln("Failed to fetch repository info")
+					continue
+				}
+				repositories <- repository
 			}
-			repositories <- repository
 		}
 
-	}
-	return nil
+	}()
+	return repositories
 
 }
 

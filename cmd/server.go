@@ -37,8 +37,12 @@ var serverCommand = &cobra.Command{
 			return err
 		}
 
-		idx.Build()
+		indexationDone := idx.Build()
 
+		go func() {
+			_ = <-indexationDone
+			logrus.Infoln("All images indexed")
+		}()
 		s = server.NewServer(port, idx)
 		logrus.Infoln("Server listening...")
 		return s.Run()

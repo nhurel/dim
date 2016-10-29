@@ -21,7 +21,11 @@ type Index struct {
 	registryURL  string
 	registryAuth *types.AuthConfig
 	regClient    registry.Client
-	buildWg      sync.WaitGroup
+}
+
+type repoImage struct {
+	repoName string
+	image    *registry.Image
 }
 
 // New create a new instance to manage a index of a given registry into a specific directory
@@ -40,45 +44,47 @@ func New(dir string, registryURL string, registryAuth *types.AuthConfig) (*Index
 		return nil, err
 	}
 
-	return &Index{i, registryURL, registryAuth, reg, sync.WaitGroup{}}, nil
+	return &Index{i, registryURL, registryAuth, reg}, nil
 }
 
-// Build creates a full index from the registry
-func (idx *Index) Build() {
+// Build creates a full index from the registry.
+// The returned channel is closed once all images are indexed so the caller can block until the index is built if needed
+func (idx *Index) Build() <-chan bool {
+	done := make(chan bool, 1)
 
-	repositories := make(chan registry.Repository, 10)
-	go idx.regClient.WalkRepositories(repositories)
+	go func() {
+		repositories := idx.regClient.WalkRepositories()
 
-	for repository := range repositories {
-		idx.buildWg.Add(1)
-		go func(repo registry.Repository) {
-			defer idx.buildWg.Done()
-			if err := idx.indexRepository(repo); err != nil {
-				logrus.WithError(err).WithField("repository", repo.Named().Name()).Errorln("An error occured while indexin repository")
+		images := make(chan *repoImage, 3)
+
+		submitWg := sync.WaitGroup{}
+		for repository := range repositories {
+			submitWg.Add(1)
+			go func(repo registry.Repository) {
+				defer submitWg.Done()
+				for img := range repo.WalkImages() {
+					images <- &repoImage{repository.Named().Name(), img}
+				}
+			}(repository)
+		}
+
+		go func() {
+			doneWG := sync.WaitGroup{}
+			for img := range images {
+				doneWG.Add(1)
+				go func(n string, i *registry.Image) {
+					defer doneWG.Done()
+					idx.IndexImage(Parse(n, i))
+				}(img.repoName, img.image)
 			}
-		}(repository)
-	}
-	idx.buildWg.Wait()
-}
+			doneWG.Wait()
+			close(done)
+		}()
 
-// indexRepository browse all tags of a given repository and index the corresponding images
-func (idx *Index) indexRepository(repository registry.Repository) error {
-	l := logrus.WithField("repository", repository.Named().Name())
-
-	l.Infoln("Indexing repository")
-
-	images := make(chan *registry.Image, 10)
-	go repository.WalkImages(images)
-
-	for img := range images {
-		idx.buildWg.Add(1)
-		go func(n string, i *registry.Image) {
-			defer idx.buildWg.Done()
-			idx.IndexImage(Parse(n, i))
-		}(repository.Named().Name(), img)
-	}
-
-	return nil
+		submitWg.Wait()
+		close(images)
+	}()
+	return done
 }
 
 // GetImageAndIndex gets image details and updates the index

@@ -17,7 +17,7 @@ type Repository interface {
 	Image(tag string) (img *Image, err error)
 	ImageFromManifest(tagDigest digest.Digest, tag string) (img *Image, err error)
 	DeleteImage(tag string) error
-	WalkImages(images chan<- *Image) error
+	WalkImages() <-chan *Image
 }
 
 // RegistryRepository implements Repository interface
@@ -148,38 +148,44 @@ func (r *registryRepository) DeleteImage(tag string) error {
 }
 
 // WalkImages walks through all images of the repository and writes them in the given channel
-func (r *registryRepository) WalkImages(images chan<- *Image) error {
-	return WalkImages(r, images)
+func (r *registryRepository) WalkImages() <-chan *Image {
+	return WalkImages(r)
 }
 
 // WalkImages walks through all images of the repository and writes them in the given channel
-func WalkImages(r Repository, images chan<- *Image) error {
-	defer close(images)
-	var err error
-	var tags []string
-	l := logrus.WithField("repository", r.Named().Name())
+func WalkImages(r Repository) <-chan *Image {
+	images := make(chan *Image)
 
-	l.Debugln("Walking through repository images")
+	go func() {
+		defer close(images)
+		var err error
+		var tags []string
+		l := logrus.WithField("repository", r.Named().Name())
 
-	if tags, err = r.AllTags(); err != nil {
-		l.WithError(err).Errorln("Failed to get tags ")
-		return err
-	}
+		l.Debugln("Walking through repository images")
 
-	for _, tag := range tags {
-		l = l.WithField("tag", tag)
-		l.Debugln("Getting image details")
-
-		var img *Image
-		if img, err = r.Image(tag); err != nil {
-			logrus.WithError(err).Errorln("Failed to get image")
-			return err
+		if tags, err = r.AllTags(); err != nil {
+			l.WithError(err).Errorln("Failed to get tags ")
+			return
 		}
 
-		l.WithField("image", img).Debugln("Walking on image")
-		images <- img
-	}
-	return nil
+		for _, tag := range tags {
+			l = l.WithField("tag", tag)
+			l.Debugln("Getting image details")
+
+			var img *Image
+			if img, err = r.Image(tag); err != nil {
+				logrus.WithError(err).Errorln("Failed to get image")
+				return
+			}
+
+			l.WithField("image", img).Debugln("Walking on image")
+			images <- img
+		}
+
+	}()
+
+	return images
 
 }
 

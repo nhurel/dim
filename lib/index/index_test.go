@@ -2,7 +2,6 @@ package index
 
 import (
 	"path"
-	"sync"
 	"testing"
 	"time"
 
@@ -124,7 +123,7 @@ func (s *TestSuite) SetUpSuite(c *C) {
 		return
 	}
 
-	s.index = &Index{i, "", nil, nil, sync.WaitGroup{}}
+	s.index = &Index{i, "", nil, nil}
 
 	for _, image := range images {
 		if err := s.index.Index.Index(image.FullName, image); err != nil {

@@ -3,7 +3,6 @@ package index
 import (
 	"fmt"
 	"io"
-	"sync"
 	"testing"
 	"text/template"
 
@@ -44,8 +43,8 @@ func (r *NoOpRegistryClient) Search(query, advanced string, offset, numResults i
 	return nil, nil
 }
 
-func (r *NoOpRegistryClient) WalkRepositories(repositories chan<- registry.Repository) error {
-	return registry.WalkRepositories(r, repositories)
+func (r *NoOpRegistryClient) WalkRepositories() <-chan registry.Repository {
+	return registry.WalkRepositories(r)
 }
 
 func (r *NoOpRegistryClient) PrintImageInfo(w io.Writer, parsedName reference.Named, tpl *template.Template) error {
@@ -84,8 +83,8 @@ func (r *NoOpRegistryRepository) DeleteImage(tag string) error {
 	return nil
 }
 
-func (r *NoOpRegistryRepository) WalkImages(images chan<- *registry.Image) error {
-	return registry.WalkImages(r, images)
+func (r *NoOpRegistryRepository) WalkImages() <-chan *registry.Image {
+	return registry.WalkImages(r)
 }
 func (r *NoOpRegistryRepository) Named() ref.Named {
 	n, _ := ref.ParseNamed(r.name)
@@ -147,7 +146,7 @@ func (s *RegistrySuite) SetUpSuite(c *C) {
 		return
 	}
 	fmt.Println("New index")
-	s.index = &Index{i, "", nil, &NoOpRegistryClient{}, sync.WaitGroup{}}
+	s.index = &Index{i, "", nil, &NoOpRegistryClient{}}
 
 }
 
@@ -156,7 +155,8 @@ func (s *RegistrySuite) TearDownSuite(c *C) {
 }
 
 func (s *RegistrySuite) TestBuild(c *C) {
-	s.index.Build()
+	done := s.index.Build()
+	_ = <-done
 	fmt.Println("INDEX BUILT")
 	srq := bleve.NewSearchRequest(bleve.NewMatchAllQuery())
 	srs, err := s.index.Search(srq)
