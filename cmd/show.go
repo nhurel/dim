@@ -17,6 +17,9 @@ import (
 var showCommand = &cobra.Command{
 	Use:   "show IMAGE",
 	Short: "Shows details about an image",
+	Long: `Print the defails of a local image.
+Use the -o flag to write the details into a flag instead of writing to stdout.
+Use the -r flag to print the details of an image on the private registry (not present locally)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return fmt.Errorf("image name is missing")

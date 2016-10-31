@@ -61,7 +61,7 @@ func init() {
 	RootCommand.PersistentFlags().String("registry-url", "", "Registry URL or hostname")
 	RootCommand.PersistentFlags().String("registry-user", "", "Registry username")
 	RootCommand.PersistentFlags().String("registry-password", "", "Registry password")
-	RootCommand.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Connect ot registry through http instead of https")
+	RootCommand.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Connect to registry through http instead of https")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.BindPFlag("registry-url", RootCommand.PersistentFlags().Lookup("registry-url"))
 	viper.BindPFlag("registry-user", RootCommand.PersistentFlags().Lookup("registry-user"))

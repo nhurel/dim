@@ -18,6 +18,17 @@ import (
 var searchCommand = &cobra.Command{
 	Use:   "search QUERY",
 	Short: "Run a search against a private registry",
+	Long: `Search an image on the private registry.
+By default the provided query is searched in the names and tags of the images on the registry.
+Using -a flag, you can run advanced queries and search in the labels and volumes too.
+Example :
+# Find the images with label os=ubuntu
+dim search -a Label.os:ubuntu
+# Find the images having a label 'os'
+dim search -a Labels:os
+
+With the -a flag, you can also use the +/- operator to combine your clauses :
+dim search -a +Label.os:ubuntu -Label.version=xenial`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return errors.New("query is missing")

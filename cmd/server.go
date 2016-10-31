@@ -17,6 +17,9 @@ import (
 var serverCommand = &cobra.Command{
 	Use:   "server",
 	Short: "Runs in server mode to provide search feature",
+	Long: `Start dim in server mode. In this mode, dim indexes your private registry and provide a search endpoint.
+Use the --port flag to specify the adress the server listens.
+	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		handleSignal()
 
