@@ -46,6 +46,7 @@ var RootCommand = &cobra.Command{
 
 		Dim = &dim.Dim{Docker: &dockerClient.DockerClient{Auth: authConfig, Insecure: insecure}}
 	},
+	BashCompletionFunction: bash_completion_func,
 }
 
 var logLevel string
@@ -105,3 +106,27 @@ func guessTag(tagOption string, imageName string, imageTags []string, override b
 	}
 	return tag, nil
 }
+
+const (
+	bash_completion_func = `
+__custom_func() {
+	case ${last_command} in
+		dim_show | dim_delete | dim_label)
+			__docker_images
+			return
+			;;
+		*)
+			;;
+	esac
+}
+
+__docker_images() {
+	local out
+	_get_comp_words_by_ref -n : cur
+	if out=$(docker images --format="{{.Repository}}\:{{.Tag}}" 2>/dev/null); then
+		COMPREPLY=( $( compgen -W "${out}" -- "$cur" ) )
+	fi
+	__ltrim_colon_completions "$cur"
+}
+	`
+)
