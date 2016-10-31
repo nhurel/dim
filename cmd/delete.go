@@ -17,6 +17,9 @@ var deleteCommand = &cobra.Command{
 	Long: `Deletes the image IMAGE locally.
 If no TAG is specified, latest will be used
 If flag -r is given the image is also deleted on the remote registry.`,
+	Example: `dim delete ubuntu
+dim delete -r ubuntu:xenial
+	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return fmt.Errorf("image name missing")

@@ -12,11 +12,11 @@ var labelCommand = &cobra.Command{
 	Short: "Add / Remove a label to a given image",
 	Long: `Add label to the image IMAGE. If no tag is given, latest will be used.
 Multiple labels can be given at once, separated by a space.
-Example :
-dim label ubuntu:xenial os=ubuntu version=xenial
-
 To delete a tag, pass the --delete flag.
 `,
+	Example: `dim label ubuntu:xenial os=ubuntu version=xenial
+dim label --delete ubuntu:xenial os version
+	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 2 {
 			return fmt.Errorf("Missing argument. See help")
