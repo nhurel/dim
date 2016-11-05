@@ -46,7 +46,7 @@ var RootCommand = &cobra.Command{
 
 		Dim = &dim.Dim{Docker: &dockerClient.DockerClient{Auth: authConfig, Insecure: insecure}}
 	},
-	BashCompletionFunction: bash_completion_func,
+	BashCompletionFunction: bashCompletionFunc,
 }
 
 var logLevel string
@@ -108,7 +108,7 @@ func guessTag(tagOption string, imageName string, imageTags []string, override b
 }
 
 const (
-	bash_completion_func = `
+	bashCompletionFunc = `
 __custom_func() {
 	case ${last_command} in
 		dim_show | dim_delete | dim_label)
