@@ -109,7 +109,11 @@ func (c *registryClient) Search(query, advanced string, offset, maxResults int) 
 	if q != "" {
 		values.Set("q", q)
 	}
-	values.Set("f", "full")
+
+	for _, field := range []string{"Name", "Tag", "FullName", "Labels", "Envs", "Volumes", "ExposedPorts", "Size"} {
+		values.Add("f", field)
+	}
+
 	values.Set("offset", strconv.Itoa(offset))
 	values.Set("maxResults", strconv.Itoa(maxResults))
 

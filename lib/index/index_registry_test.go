@@ -122,7 +122,15 @@ var repoImages = map[string]*registry.Image{
 	"mysql:5.7": &registry.Image{
 		Image: &image.Image{
 			V1Image: image.V1Image{
-				Config: &container.Config{},
+				Config: &container.Config{
+					Labels: map[string]string{
+						"type":   "database",
+						"family": "mysql",
+					},
+					Env: []string{
+						"MYSQL_VERSION=5.7",
+					},
+				},
 			},
 		},
 		Tag:    "5.7",
@@ -138,14 +146,12 @@ var _ = Suite(&RegistrySuite{})
 func (s *RegistrySuite) SetUpSuite(c *C) {
 
 	logrus.SetLevel(logrus.DebugLevel)
-	fmt.Println("SetupSuite()")
 	var i bleve.Index
 	var err error
 	if i, err = MockIndex(); err != nil {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
 	}
-	fmt.Println("New index")
 	s.index = &Index{i, "", nil, &NoOpRegistryClient{}}
 
 }
@@ -157,9 +163,19 @@ func (s *RegistrySuite) TearDownSuite(c *C) {
 func (s *RegistrySuite) TestBuild(c *C) {
 	done := s.index.Build()
 	_ = <-done
-	fmt.Println("INDEX BUILT")
 	srq := bleve.NewSearchRequest(bleve.NewMatchAllQuery())
 	srs, err := s.index.Search(srq)
 	c.Assert(err, IsNil)
 	c.Assert(srs.Total, Equals, uint64(4))
+}
+
+func (s *RegistrySuite) TestSearchImages(c *C) {
+	done := s.index.Build()
+	_ = <-done
+	sr, err := s.index.SearchImages("", "+Name:mysql +Tag:5.7", []string{"Name", "Tag", "FullName", "Labels", "Envs"}, 0, 5)
+	c.Assert(err, IsNil)
+	c.Assert(sr.Total, Equals, uint64(1))
+	c.Assert(sr.Hits[0].Fields["Label.family"], Equals, "mysql")
+	c.Assert(sr.Hits[0].Fields["Label.type"], Equals, "database")
+	c.Assert(sr.Hits[0].Fields["Env.MYSQL_VERSION"], Equals, "5.7")
 }

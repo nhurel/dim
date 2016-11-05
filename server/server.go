@@ -91,7 +91,11 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	var err error
 	var b []byte
 
-	q, a, f := r.FormValue("q"), r.FormValue("a"), r.FormValue("f")
+	if err = r.ParseForm(); err != nil {
+		logrus.WithError(err).Errorln("Failed to parse query")
+		http.Error(w, "Failed to parse query", http.StatusBadRequest)
+	}
+	q, a, fields := r.Form.Get("q"), r.Form.Get("a"), r.Form["f"]
 
 	// No error handling here. Using defaults if wrong params given
 	offset, _ := strconv.Atoi(r.FormValue("offset"))
@@ -106,9 +110,9 @@ func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sr *bleve.SearchResult
-	l := logrus.WithFields(logrus.Fields{"query": q, "advanced_query": a, "fillDetails": f})
+	l := logrus.WithFields(logrus.Fields{"query": q, "advanced_query": a, "fields": fields})
 	l.Debugln("Searching image")
-	if sr, err = i.SearchImages(q, a, (f == "full"), offset, maxResults); err != nil {
+	if sr, err = i.SearchImages(q, a, fields, offset, maxResults); err != nil {
 		http.Error(w, "An error occured while procesing your request", http.StatusInternalServerError)
 		l.WithError(err).Errorln("Error occured when processing search")
 		return

@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/registry"
+	"github.com/nhurel/dim/lib/utils"
 )
 
 // Index manages indexation of docker images
@@ -172,8 +173,9 @@ func BuildQuery(nameTag, advanced string) bleve.Query {
 
 }
 
-// SearchImages returns the images matching query. If fillDetails is true, it fetches all labels, ports and volumes information as well
-func (idx *Index) SearchImages(q, a string, fillDetails bool, offset, maxResults int) (*bleve.SearchResult, error) {
+// SearchImages returns the images matching query.
+// If fields is not empty, it fetches all given fields as well
+func (idx *Index) SearchImages(q, a string, fields []string, offset, maxResults int) (*bleve.SearchResult, error) {
 	var err error
 	var sr *bleve.SearchResult
 	request := bleve.NewSearchRequestOptions(BuildQuery(q, a), maxResults, offset, false)
@@ -184,9 +186,17 @@ func (idx *Index) SearchImages(q, a string, fillDetails bool, offset, maxResults
 		return sr, fmt.Errorf("Error occured when processing search : %v", err)
 	}
 
-	if fillDetails {
+	if fields != nil && len(fields) > 0 {
+		detailFields := make([]string, len(fields))
+		copy(detailFields, fields)
+		for _, f := range []string{"Name", "Tag", "FullName"} {
+			if !utils.ListContains(detailFields, f) {
+				detailFields = append(detailFields, f)
+			}
+		}
+
 		for i, h := range sr.Hits {
-			if sr.Hits[i], err = idx.searchDetails(h); err != nil {
+			if sr.Hits[i], err = idx.searchDetails(h, detailFields); err != nil {
 				return sr, fmt.Errorf("Error occured while searching details of an image : %x", err)
 			}
 		}
@@ -194,11 +204,11 @@ func (idx *Index) SearchImages(q, a string, fillDetails bool, offset, maxResults
 	return sr, nil
 }
 
-func (idx *Index) searchDetails(doc *search.DocumentMatch) (*search.DocumentMatch, error) {
-	logrus.WithField("doc", doc).Debugln("Entering searchDetails")
+func (idx *Index) searchDetails(doc *search.DocumentMatch, fields []string) (*search.DocumentMatch, error) {
+	logrus.WithField("doc", doc).WithField("fields", fields).Debugln("Entering searchDetails")
 	request := bleve.NewSearchRequest(bleve.NewDocIDQuery([]string{doc.ID}))
-	request.Fields = []string{"Name", "Tag", "FullName", "Volumes", "ExposedPorts", "Env", "Size"}
-	if doc.Fields["Labels"] != nil {
+	request.Fields = fields
+	if doc.Fields["Labels"] != nil && utils.ListContains(fields, "Labels") {
 		switch f := doc.Fields["Labels"].(type) {
 		case string:
 			request.Fields = append(request.Fields, fmt.Sprintf("Label.%s", f))
@@ -208,8 +218,8 @@ func (idx *Index) searchDetails(doc *search.DocumentMatch) (*search.DocumentMatc
 			}
 		}
 	}
-	if doc.Fields["Envs"] != nil {
-		switch f := doc.Fields["Labels"].(type) {
+	if doc.Fields["Envs"] != nil && utils.ListContains(fields, "Envs") {
+		switch f := doc.Fields["Envs"].(type) {
 		case string:
 			request.Fields = append(request.Fields, fmt.Sprintf("Env.%s", f))
 		case []interface{}:
