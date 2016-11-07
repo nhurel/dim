@@ -1,8 +1,10 @@
 SHELL := /bin/bash
 BINARY=dim
 
-VET_DIR := ./cli/... ./cmd/... ./lib/... ./server/... ./wrapper/... ./types/...
-DIR_SOURCES := cli/... cmd/... lib/... server/... wrapper/... types/...
+VET_DIR := $(shell find . -maxdepth 1 -type d | grep -Ev "(^\./\.|\./vendor|\./dist|\./tests|^\.$$)" | sed  -e 's,.*,&/...,g' )
+TEST_DIR := $(shell find . -maxdepth 1 -type d | grep -Ev "(^\./\.|\./vendor|\./dist|\./tests|\./integration|^\.$$)" | sed  -e 's,.*,&/...,g' )
+DIR_SOURCES :=  $(shell find . -maxdepth 1 -type d | grep -Ev "(^\./\.|\./vendor|\./dist|\./tests|^\.$$)" | sed  -e 's,\./\(.*\),\1/...,g')
+GOIMPORTS_SOURCES := $(shell find . -maxdepth 1 -type d | grep -Ev "(^\./\.|\./vendor|\./dist|\./tests|^\.$$)" | sed  -e 's,\./\(.*\),\1/,g')
 
 SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
 
@@ -18,7 +20,7 @@ $(BINARY): $(SOURCES)
 distribution:
 	rm -rf dist && mkdir -p dist
 	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=windows -e GOARCH=amd64 golang:1.7.3 go build -v -o dist/$(BINARY)-windows.exe -ldflags "-s -X main.Version=$(git_tag)"
-	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=linux -e GOARCH=amd64 golang:1.7.3 go build -v -o dist/$(BINARY)-linux -ldflags "-s -X main.Version=$(git_tag)"
+	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=linux -e GOARCH=amd64 golang:1.7.3 go build -v -o dist/$(BINARY)-linux-x64 -ldflags "-s -X main.Version=$(git_tag)"
 	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=darwin -e GOARCH=amd64 golang:1.7.3 go build -v -o dist/$(BINARY)-darwin -ldflags "-s -X main.Version=$(git_tag)"
 
 docker: $(BINARY)
@@ -34,7 +36,7 @@ clean:
 	if [ -f ${BINARY} ] ; then rm ${BINARY} ; fi
 
 test: fmt
-	go test ${VET_DIR}
+	go test ${TEST_DIR}
 
 vet: fmt
 	go vet ${VET_DIR}
@@ -45,8 +47,8 @@ lint: fmt
 	golint main.go
 
 fmt:
-	goimports -w .
-	go fmt ./...
+	goimports -w ${GOIMPORTS_SOURCES}
+	go fmt ${VET_DIR}
 
 
 completion:
