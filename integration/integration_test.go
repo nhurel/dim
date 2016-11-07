@@ -29,7 +29,7 @@ type testImages struct {
 	volumes    []string
 }
 
-var integration_label = testImages{
+var integrationLabel = testImages{
 	tag: "localhost/httpd:first",
 	labels: []string{
 		"type=web",
@@ -70,7 +70,7 @@ func (s *IntegrationTestSuite) SetUpSuite(c *C) {
 }
 
 func (s *IntegrationTestSuite) TestLabelAndSearch(c *C) {
-	if o, err := runCommand(dimExec, "label", "httpd:2.4-alpine", "-t", integration_label.tag, "-p", "-k", "-r", integration_label.labels); err != nil {
+	if o, err := runCommand(dimExec, "label", "httpd:2.4-alpine", "-t", integrationLabel.tag, "-p", "-k", "-r", integrationLabel.labels); err != nil {
 		c.Error(o)
 		c.Fatal(err)
 	}
@@ -94,12 +94,12 @@ func (s *IntegrationTestSuite) TestLabelAndSearch(c *C) {
 }
 
 func (s *IntegrationTestSuite) TestUnlabelAndSearch(c *C) {
-	if o, err := runCommand(dimExec, "label", "httpd:2.4-alpine", "-t", integration_label.tag, "-p", integration_label.labels); err != nil {
+	if o, err := runCommand(dimExec, "label", "httpd:2.4-alpine", "-t", integrationLabel.tag, "-p", integrationLabel.labels); err != nil {
 		c.Error(o)
 		c.Fatal(err)
 	}
 
-	if o, err := runCommand(dimExec, "label", "-d", "-o", "-r", integration_label.tag, "-p", "-k", integration_label.labelsName); err != nil {
+	if o, err := runCommand(dimExec, "label", "-d", "-o", "-r", integrationLabel.tag, "-p", "-k", integrationLabel.labelsName); err != nil {
 		c.Error(o)
 		c.Fatal(err)
 	}
@@ -122,14 +122,14 @@ func (s *IntegrationTestSuite) TestUnlabelAndSearch(c *C) {
 }
 
 func (s *IntegrationTestSuite) TestDeleteAndSearch(c *C) {
-	if o, err := runCommand(dimExec, "label", "-p", "httpd:2.4-alpine", "-t", integration_label.tag, "-r", "-k", integration_label.labels); err != nil {
+	if o, err := runCommand(dimExec, "label", "-p", "httpd:2.4-alpine", "-t", integrationLabel.tag, "-r", "-k", integrationLabel.labels); err != nil {
 		c.Error(o)
 		c.Fatal(err)
 	}
 
 	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
 
-	if o, err := runCommand(dimExec, "delete", "--registry-url=localhost", "-k", "-r", integration_label.tag); err != nil {
+	if o, err := runCommand(dimExec, "delete", "--registry-url=localhost", "-k", "-r", integrationLabel.tag); err != nil {
 		c.Log(o)
 		c.Log(string(err.(*exec.ExitError).Stderr))
 		c.Error("Error when deleting image")
