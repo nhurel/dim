@@ -83,63 +83,64 @@ func Parse(name string, img *registry.Image) *Image {
 	return parsed
 }
 
-var imageMapping *bleve.DocumentMapping
+// ImageMapping is a document mapping that specifies how to index an image
+var ImageMapping *bleve.DocumentMapping
 
 func init() {
 
-	imageMapping = bleve.NewDocumentMapping()
+	ImageMapping = bleve.NewDocumentMapping()
 
 	tagMapping := bleve.NewTextFieldMapping()
 	tagMapping.Analyzer = keyword_analyzer.Name
 	tagMapping.IncludeInAll = true
 	tagMapping.Store = true
-	imageMapping.AddFieldMappingsAt("Tag", tagMapping)
+	ImageMapping.AddFieldMappingsAt("Tag", tagMapping)
 
 	nameMapping := bleve.NewTextFieldMapping()
 	nameMapping.Analyzer = simple_analyzer.Name
 	nameMapping.IncludeInAll = true
 	nameMapping.Store = true
-	imageMapping.AddFieldMappingsAt("Name", nameMapping)
-	imageMapping.AddFieldMappingsAt("FullName", nameMapping)
+	ImageMapping.AddFieldMappingsAt("Name", nameMapping)
+	ImageMapping.AddFieldMappingsAt("FullName", nameMapping)
 
 	idMapping := bleve.NewTextFieldMapping()
 	idMapping.Analyzer = keyword_analyzer.Name
 	idMapping.Store = true
 	idMapping.IncludeInAll = false
 	idMapping.Index = true
-	imageMapping.AddFieldMappingsAt("ID", idMapping)
+	ImageMapping.AddFieldMappingsAt("ID", idMapping)
 
 	authorMapping := bleve.NewTextFieldMapping()
 	authorMapping.Analyzer = simple_analyzer.Name
 	authorMapping.IncludeInAll = false
 	authorMapping.Store = true
-	imageMapping.AddFieldMappingsAt("Author", authorMapping)
-	imageMapping.AddFieldMappingsAt("Volumes", authorMapping)
-	imageMapping.AddFieldMappingsAt("Labels", authorMapping)
-	imageMapping.AddFieldMappingsAt("Labels", idMapping)
-	imageMapping.AddFieldMappingsAt("Label", authorMapping)
-	imageMapping.AddFieldMappingsAt("Envs", authorMapping)
-	imageMapping.AddFieldMappingsAt("Envs", idMapping)
-	imageMapping.AddFieldMappingsAt("Env", authorMapping)
+	ImageMapping.AddFieldMappingsAt("Author", authorMapping)
+	ImageMapping.AddFieldMappingsAt("Volumes", authorMapping)
+	ImageMapping.AddFieldMappingsAt("Labels", authorMapping)
+	ImageMapping.AddFieldMappingsAt("Labels", idMapping)
+	ImageMapping.AddFieldMappingsAt("Label", authorMapping)
+	ImageMapping.AddFieldMappingsAt("Envs", authorMapping)
+	ImageMapping.AddFieldMappingsAt("Envs", idMapping)
+	ImageMapping.AddFieldMappingsAt("Env", authorMapping)
 
 	commentMapping := bleve.NewTextFieldMapping()
 	commentMapping.Analyzer = standard_analyzer.Name
 	commentMapping.IncludeInAll = true
 	commentMapping.Store = true
-	imageMapping.AddFieldMappingsAt("Comment", commentMapping)
+	ImageMapping.AddFieldMappingsAt("Comment", commentMapping)
 
 	dateMapping := bleve.NewDateTimeFieldMapping()
 	dateMapping.DateFormat = datetime_optional.Name
 	dateMapping.Store = true
 	dateMapping.IncludeInAll = false
-	imageMapping.AddFieldMappingsAt("Created", dateMapping)
+	ImageMapping.AddFieldMappingsAt("Created", dateMapping)
 
 	portsMapping := bleve.NewNumericFieldMapping()
-	portsMapping.Store = false
+	portsMapping.Store = true
 	portsMapping.IncludeInAll = false
-	imageMapping.AddFieldMappingsAt("ExposedPorts", portsMapping)
-	imageMapping.AddFieldMappingsAt("Size", portsMapping)
+	ImageMapping.AddFieldMappingsAt("ExposedPorts", portsMapping)
+	ImageMapping.AddFieldMappingsAt("Size", portsMapping)
 
-	imageMapping.DefaultAnalyzer = simple_analyzer.Name
+	ImageMapping.DefaultAnalyzer = simple_analyzer.Name
 
 }

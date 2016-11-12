@@ -1,4 +1,4 @@
-package index
+package index_test
 
 import (
 	"fmt"
@@ -16,18 +16,19 @@ import (
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types/container"
+	"github.com/nhurel/dim/lib/index"
+	"github.com/nhurel/dim/lib/index/indextest"
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/types"
 	. "gopkg.in/check.v1"
 )
 
 type RegistrySuite struct {
-	index *Index
+	index *index.Index
 }
 
 type NoOpRegistryClient struct {
 	client.Registry
-	//registry.RegistryClient
 }
 
 func (r *NoOpRegistryClient) Repositories(ctx context.Context, repos []string, last string) (int, error) {
@@ -92,7 +93,7 @@ func (r *NoOpRegistryRepository) Named() ref.Named {
 }
 
 var repoImages = map[string]*registry.Image{
-	"httpd:2.2": &registry.Image{
+	"httpd:2.2": {
 		Image: &image.Image{
 			V1Image: image.V1Image{
 				Config: &container.Config{},
@@ -101,7 +102,7 @@ var repoImages = map[string]*registry.Image{
 		Tag:    "2.2",
 		Digest: "httpd:2.2",
 	},
-	"httpd:2.4": &registry.Image{
+	"httpd:2.4": {
 		Image: &image.Image{
 			V1Image: image.V1Image{
 				Config: &container.Config{},
@@ -110,7 +111,7 @@ var repoImages = map[string]*registry.Image{
 		Tag:    "2.4",
 		Digest: "httpd:2.4",
 	},
-	"mysql:5.5": &registry.Image{
+	"mysql:5.5": {
 		Image: &image.Image{
 			V1Image: image.V1Image{
 				Config: &container.Config{},
@@ -119,7 +120,7 @@ var repoImages = map[string]*registry.Image{
 		Tag:    "5.5",
 		Digest: "mysql:5.5",
 	},
-	"mysql:5.7": &registry.Image{
+	"mysql:5.7": {
 		Image: &image.Image{
 			V1Image: image.V1Image{
 				Config: &container.Config{
@@ -148,11 +149,11 @@ func (s *RegistrySuite) SetUpSuite(c *C) {
 	logrus.SetLevel(logrus.DebugLevel)
 	var i bleve.Index
 	var err error
-	if i, err = MockIndex(); err != nil {
+	if i, err = indextest.MockIndex(); err != nil {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
 	}
-	s.index = &Index{i, "", nil, &NoOpRegistryClient{}}
+	s.index = &index.Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: &NoOpRegistryClient{}}
 
 }
 

@@ -170,16 +170,32 @@ func documentToSearchResult(h *search.DocumentMatch) types.SearchResult {
 		result.Label = labels
 	}
 	if h.Fields["Volumes"] != nil {
-		result.Volumes = []string{h.Fields["Volumes"].(string)}
+		switch vol := h.Fields["Volumes"].(type) {
+		case string:
+			result.Volumes = []string{vol}
+		case []interface{}:
+			result.Volumes = make([]string, len(vol))
+			for i, volume := range vol {
+				result.Volumes[i] = volume.(string)
+			}
+		}
 	}
 	if h.Fields["ExposedPorts"] != nil {
-		result.ExposedPorts = h.Fields["ExposedPorts"].([]int)
+		switch ports := h.Fields["ExposedPorts"].(type) {
+		case float64:
+			result.ExposedPorts = []int{int(ports)}
+		case []interface{}:
+			result.ExposedPorts = make([]int, len(ports))
+			for i, port := range ports {
+				result.ExposedPorts[i] = int(port.(float64))
+			}
+		}
 	}
 	if len(envs) > 0 {
 		result.Env = envs
 	}
 	if h.Fields["Size"] != nil {
-		result.Size = h.Fields["Size"].(int64)
+		result.Size = int64(h.Fields["Size"].(float64))
 	}
 
 	return result

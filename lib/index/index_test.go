@@ -1,17 +1,17 @@
-package index
+package index_test
 
 import (
-	"path"
 	"testing"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
+	"github.com/nhurel/dim/lib/index"
+	"github.com/nhurel/dim/lib/index/indextest"
 	. "gopkg.in/check.v1"
 )
 
 type TestSuite struct {
-	index *Index
+	index *index.Index
 }
 
 // Hook up gocheck into the "go test" runner.
@@ -20,13 +20,13 @@ func Test(t *testing.T) { TestingT(t) }
 var _ = Suite(&TestSuite{})
 
 var (
-	images = []Image{
-		Image{
+	images = []index.Image{
+		{
 			ID:       "123456",
 			Name:     "centos",
 			Tag:      "centos6",
 			FullName: "centos:centos6",
-			Created:  parseTime("2016-07-24T09:05:06"),
+			Created:  indextest.ParseTime("2016-07-24T09:05:06"),
 			Label: map[string]string{
 				"type":   "base",
 				"family": "rhel",
@@ -36,12 +36,12 @@ var (
 				"family",
 			},
 		},
-		Image{
+		{
 			ID:       "234567",
 			Name:     "httpd",
 			Tag:      "2.4",
 			FullName: "httpd:2.4",
-			Created:  parseTime("2016-06-23T09:05:06"),
+			Created:  indextest.ParseTime("2016-06-23T09:05:06"),
 			Label: map[string]string{
 				"type":      "web",
 				"family":    "debian",
@@ -67,12 +67,12 @@ var (
 			},
 			ExposedPorts: []int{80, 443},
 		},
-		Image{
+		{
 			ID:       "354678",
 			Name:     "mysql",
 			Tag:      "5.7",
 			FullName: "mysql:5.7",
-			Created:  parseTime("2016-06-30T09:05:06"),
+			Created:  indextest.ParseTime("2016-06-30T09:05:06"),
 			Label: map[string]string{
 				"type":      "sql",
 				"family":    "debian",
@@ -99,31 +99,16 @@ var (
 	}
 )
 
-func parseTime(value string) time.Time {
-	t, _ := time.Parse(time.RFC3339, value)
-	return t
-}
-
-func MockIndex() (bleve.Index, error) {
-	logrus.SetLevel(logrus.InfoLevel)
-	dir := path.Join("test.index", time.Now().Format("20060102150405.000"))
-
-	mapping := bleve.NewIndexMapping()
-	mapping.AddDocumentMapping("image", imageMapping)
-	mapping.DefaultField = "_all"
-	return bleve.New(dir, mapping)
-}
-
 func (s *TestSuite) SetUpSuite(c *C) {
 	logrus.SetLevel(logrus.InfoLevel)
 	var i bleve.Index
 	var err error
-	if i, err = MockIndex(); err != nil {
+	if i, err = indextest.MockIndex(); err != nil {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
 	}
 
-	s.index = &Index{i, "", nil, nil}
+	s.index = &index.Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: nil}
 
 	for _, image := range images {
 		if err := s.index.Index.Index(image.FullName, image); err != nil {
@@ -154,7 +139,7 @@ func (s *TestSuite) TestNameTagSearch(c *C) {
 
 	for _, t := range tests {
 		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(BuildQuery(t.query, ""))
+		request := bleve.NewSearchRequest(index.BuildQuery(t.query, ""))
 		request.Fields = []string{"Name", "Tag"}
 		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)
@@ -192,7 +177,7 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 
 	for _, t := range tests {
 		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(BuildQuery("", t.query))
+		request := bleve.NewSearchRequest(index.BuildQuery("", t.query))
 		request.Fields = []string{"Name", "Tag"}
 		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)
@@ -203,4 +188,20 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 			c.Assert(results.Hits[i].Fields["Name"], Equals, r)
 		}
 	}
+}
+
+func (s *TestSuite) TestSearchResults(c *C) {
+	request := bleve.NewSearchRequest(index.BuildQuery("mysql", ""))
+	request.Fields = []string{"Name", "Tag", "ExposedPorts", "Volumes", "Labels", "Envs"}
+	results, err := s.index.Search(request)
+	c.Assert(err, IsNil)
+	c.Log(results)
+	c.Assert(results.Total, Equals, uint64(1))
+	c.Assert(results.Hits, HasLen, 1)
+	c.Assert(results.Hits[0].Fields["ExposedPorts"], Equals, float64(3306))
+	c.Assert(results.Hits[0].Fields["Tag"], Equals, "5.7")
+	c.Assert(results.Hits[0].Fields["Volumes"], DeepEquals, "/var/lib/mysql")
+	c.Assert(results.Hits[0].Fields["Labels"], DeepEquals, []interface{}{"type", "family", "framework"})
+	c.Assert(results.Hits[0].Fields["Envs"], DeepEquals, []interface{}{"PATH", "MYSQL_MAJOR", "MYSQL_VERSION"})
+
 }

@@ -19,9 +19,9 @@ import (
 type Index struct {
 	// Index is the bleve.Index instance
 	bleve.Index
-	registryURL  string
-	registryAuth *types.AuthConfig
-	regClient    registry.Client
+	RegistryURL  string
+	RegistryAuth *types.AuthConfig
+	RegClient    registry.Client
 }
 
 type repoImage struct {
@@ -36,7 +36,7 @@ func New(dir string, registryURL string, registryAuth *types.AuthConfig) (*Index
 	var err error
 
 	mapping := bleve.NewIndexMapping()
-	mapping.AddDocumentMapping("image", imageMapping)
+	mapping.AddDocumentMapping("image", ImageMapping)
 	if i, err = bleve.New(dir, mapping); err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (idx *Index) Build() <-chan bool {
 	done := make(chan bool, 1)
 
 	go func() {
-		repositories := idx.regClient.WalkRepositories()
+		repositories := idx.RegClient.WalkRepositories()
 
 		images := make(chan *repoImage, 3)
 
@@ -93,7 +93,7 @@ func (idx *Index) GetImageAndIndex(repository, tag string, dg digest.Digest) err
 	named, _ := reference.ParseNamed(repository)
 	var repo registry.Repository
 	var err error
-	if repo, err = idx.regClient.NewRepository(named); err != nil {
+	if repo, err = idx.RegClient.NewRepository(named); err != nil {
 		logrus.WithError(err).WithField("Repository", repository).Errorln("Failed get repository info")
 		return err
 	}
