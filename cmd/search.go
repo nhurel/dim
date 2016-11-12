@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"strconv"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
@@ -64,9 +66,9 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 			fmt.Fprintf(os.Stderr, "%d results found :\n", results.NumResults)
 			printer := cli.NewTabPrinter(os.Stdout)
 			printer.Width = widthFlag
-			printer.Append([]string{"Name", "Tag", "Labels", "Volumes"})
+			printer.Append([]string{"Name", "Tag", "Labels", "Volumes", "Ports"})
 			for _, r := range results.Results {
-				printer.Append([]string{r.Name, r.Tag, utils.FlatMap(r.Label), strings.Join(r.Volumes, ",")})
+				printer.Append([]string{r.Name, r.Tag, utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
 			}
 			printer.PrintAll(false)
 			for fetched := len(results.Results); results.NumResults > fetched; {
@@ -74,7 +76,7 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 					return fmt.Errorf("Failed to search images : %v", err)
 				}
 				for _, r := range results.Results {
-					printer.Append([]string{r.Name, r.Tag, utils.FlatMap(r.Label), strings.Join(r.Volumes, ",")})
+					printer.Append([]string{r.Name, r.Tag, utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
 				}
 				printer.PrintAll(true)
 				fetched += len(results.Results)
@@ -89,6 +91,14 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 	},
 }
 
+func intToStringSlice(iSlice []int) []string {
+	result := make([]string, len(iSlice))
+	for ind, i := range iSlice {
+		result[ind] = strconv.Itoa(i)
+	}
+	return result
+}
+
 var (
 	advancedFlag   bool
 	paginationFlag int
@@ -98,6 +108,6 @@ var (
 func init() {
 	searchCommand.Flags().BoolVarP(&advancedFlag, "advanced", "a", false, "Runs complex query")
 	searchCommand.Flags().IntVar(&paginationFlag, "bulk-size", 15, "Number of restuls to fetch at a time")
-	searchCommand.Flags().IntVarP(&widthFlag, "width", "W", 80, "Column width")
+	searchCommand.Flags().IntVarP(&widthFlag, "width", "W", 150, "Column width")
 	RootCommand.AddCommand(searchCommand)
 }
