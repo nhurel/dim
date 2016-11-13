@@ -5,7 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"net/url"
+
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/utils"
@@ -34,7 +37,7 @@ var RootCommand = &cobra.Command{
 		}
 
 		u := viper.GetString("registry-url")
-		url = utils.BuildURL(u, insecure)
+		registryURL = utils.BuildURL(u, insecure)
 
 		username = viper.GetString("registry-user")
 		password = viper.GetString("registry-password")
@@ -51,10 +54,10 @@ var RootCommand = &cobra.Command{
 
 var logLevel string
 var (
-	url      string
-	username string
-	password string
-	insecure bool
+	registryURL string
+	username    string
+	password    string
+	insecure    bool
 )
 
 func init() {
@@ -89,7 +92,27 @@ func init() {
 // Dim instance has a dockerClient object to interact with docker daemon
 var Dim *dim.Dim
 
-// GuessTag returns the tag to apply to the image to build
+func parseName(image string) (reference.Named, error) {
+	var parsedName reference.Named
+	var err error
+	if parsedName, err = reference.ParseNamed(image); err != nil {
+		return nil, fmt.Errorf("Failed to parse the name of the remote repository image : %v", err)
+	}
+	if parsedName.Hostname() == reference.DefaultHostname && !strings.HasPrefix(image, reference.DefaultHostname) {
+		fullURL, err := url.Parse(registryURL)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse registry URL : %v", err)
+		}
+
+		logrus.WithField("registryUrl", fullURL.Host).Infoln("Adding registry URL in image name")
+		if parsedName, err = reference.ParseNamed(fmt.Sprintf("%s/%s", fullURL.Host, image)); err != nil {
+			return nil, fmt.Errorf("Failed to parse the name of the remote repository image : %v", err)
+		}
+	}
+	return parsedName, nil
+}
+
+// guessTag returns the tag to apply to the image to build
 func guessTag(tagOption string, imageName string, imageTags []string, override bool) (string, error) {
 	logrus.WithFields(logrus.Fields{"tagOption": tagOption, "imageName": imageName, "imageTags": imageTags, "override": override}).Debug("Entering guessTag")
 	tag := tagOption

@@ -33,8 +33,8 @@ dim delete -r ubuntu:xenial
 
 			var parsedName reference.Named
 			var err error
-			if parsedName, err = reference.ParseNamed(image); err != nil || parsedName.Hostname() == "" {
-				return fmt.Errorf("Fail to parse the name to delete the image on a remote repository %v", err)
+			if parsedName, err = parseName(image); err != nil {
+				return err
 			}
 
 			var authConfig *types.AuthConfig

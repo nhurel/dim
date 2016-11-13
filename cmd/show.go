@@ -49,8 +49,8 @@ Use the -r flag to print the details of an image on the private registry (not pr
 
 		if remoteFlag {
 			var parsedName reference.Named
-			if parsedName, err = reference.ParseNamed(image); err != nil || parsedName.Hostname() == "" {
-				return fmt.Errorf("Failed to parse the name to delete the image on a remote repository %v", err)
+			if parsedName, err = parseName(image); err != nil {
+				return err
 			}
 
 			var authConfig *types.AuthConfig

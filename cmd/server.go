@@ -23,7 +23,7 @@ Use the --port flag to specify the adress the server listens.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		handleSignal()
 
-		if url == "" {
+		if registryURL == "" {
 			return fmt.Errorf("No registry URL given")
 		}
 
@@ -35,7 +35,7 @@ Use the --port flag to specify the adress the server listens.
 			authConfig = &types.AuthConfig{Username: username, Password: password}
 		}
 
-		idx, err := index.New(realDir, url, authConfig)
+		idx, err := index.New(realDir, registryURL, authConfig)
 		if err != nil {
 			return err
 		}

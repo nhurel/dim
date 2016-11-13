@@ -44,9 +44,9 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 		var client registry.Client
 		var err error
 
-		logrus.WithField("url", url).Debugln("Connecting to registry")
+		logrus.WithField("url", registryURL).Debugln("Connecting to registry")
 
-		if client, err = registry.New(authConfig, url); err != nil {
+		if client, err = registry.New(authConfig, registryURL); err != nil {
 			return fmt.Errorf("Failed to connect to registry : %v", err)
 		}
 
