@@ -38,6 +38,9 @@ type DockerClient struct {
 	Insecure bool
 }
 
+// ErrDockerHubAuthenticationNotSupported is thrown when trying to authenticate on a non private repository
+var ErrDockerHubAuthenticationNotSupported = fmt.Errorf("Authentication on docker hub not supported")
+
 // Client connects to the daemon and returns client object to interact with it
 func (dc *DockerClient) Client() (*client.Client, error) {
 	if dc.c == nil {
@@ -106,7 +109,11 @@ func (dc *DockerClient) Pull(image string) error {
 	}
 
 	if a, err = dc.Authenticate(n.Hostname()); err != nil {
-		return err
+		if err == ErrDockerHubAuthenticationNotSupported {
+			logrus.WithError(err).Warnln("Pulling image from docker hub as unauthenticated user")
+		} else {
+			return err
+		}
 	}
 	resp, err = c.ImagePull(context.Background(), image, types.ImagePullOptions{RegistryAuth: a})
 
@@ -125,6 +132,10 @@ func (dc *DockerClient) Pull(image string) error {
 
 // Authenticate prompts the user his credentials until it can connect to the registry
 func (dc *DockerClient) Authenticate(registryURL string) (string, error) {
+
+	if registryURL == reference.DefaultHostname {
+		return "", ErrDockerHubAuthenticationNotSupported
+	}
 
 	if dc.Auth == nil {
 		dc.Auth = &types.AuthConfig{}
@@ -147,6 +158,11 @@ func (dc *DockerClient) Authenticate(registryURL string) (string, error) {
 		}
 		resp.Body.Close()
 	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return "", fmt.Errorf("%s not a private registry", req.URL)
+	}
+
 	if err != nil {
 		return "", err
 	}

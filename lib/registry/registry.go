@@ -62,12 +62,13 @@ func New(registryAuth *types.AuthConfig, registryURL string) (Client, error) {
 	}
 
 	repos := make([]string, 1)
+	l := logrus.WithField("registry", registryURL)
 	for _, err = reg.Repositories(ctx, repos, ""); err != nil && err != io.EOF; _, err = reg.Repositories(ctx, repos, "") {
 		switch err.(type) {
-		case *client.UnexpectedHTTPStatusError, *url.Error:
+		case *client.UnexpectedHTTPStatusError, *url.Error, *client.UnexpectedHTTPResponseError:
 			return nil, fmt.Errorf("Failed to join the registry : %v", err)
 		}
-		logrus.Debugln("Prompting for credentials")
+		l.Debugln("Prompting for credentials")
 		if registryAuth == nil {
 			registryAuth = &types.AuthConfig{}
 		}
