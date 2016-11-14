@@ -48,7 +48,7 @@ func handler(i *index.Index, dhf DimHandlerFunc) http.HandlerFunc {
 }
 
 // NotifyImageChange handles docker registry events
-func NotifyImageChange(i *index.Index, w http.ResponseWriter, r *http.Request) {
+func NotifyImageChange(i index.RegistryIndex, w http.ResponseWriter, r *http.Request) {
 
 	logrus.Infoln("Receiving event from registry")
 	defer r.Body.Close()
@@ -86,7 +86,7 @@ func NotifyImageChange(i *index.Index, w http.ResponseWriter, r *http.Request) {
 }
 
 // Search handles docker search request
-func Search(i *index.Index, w http.ResponseWriter, r *http.Request) {
+func Search(i index.RegistryIndex, w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	var b []byte
@@ -202,4 +202,4 @@ func documentToSearchResult(h *search.DocumentMatch) types.SearchResult {
 }
 
 // DimHandlerFunc injects index into a HandlerFunc function
-type DimHandlerFunc func(i *index.Index, w http.ResponseWriter, r *http.Request)
+type DimHandlerFunc func(i index.RegistryIndex, w http.ResponseWriter, r *http.Request)

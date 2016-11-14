@@ -33,7 +33,7 @@ dim delete -r ubuntu:xenial
 
 			var parsedName reference.Named
 			var err error
-			if parsedName, err = parseName(image); err != nil {
+			if parsedName, err = parseName(image, registryURL); err != nil {
 				return err
 			}
 

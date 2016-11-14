@@ -3,6 +3,8 @@ package index_test
 import (
 	"testing"
 
+	"fmt"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/nhurel/dim/lib/index"
@@ -26,7 +28,7 @@ var (
 			Name:     "centos",
 			Tag:      "centos6",
 			FullName: "centos:centos6",
-			Created:  indextest.ParseTime("2016-07-24T09:05:06"),
+			Created:  indextest.ParseTime("2016-07-24T09:05:06Z"),
 			Label: map[string]string{
 				"type":   "base",
 				"family": "rhel",
@@ -41,7 +43,7 @@ var (
 			Name:     "httpd",
 			Tag:      "2.4",
 			FullName: "httpd:2.4",
-			Created:  indextest.ParseTime("2016-06-23T09:05:06"),
+			Created:  indextest.ParseTime("2016-06-23T09:05:06Z"),
 			Label: map[string]string{
 				"type":      "web",
 				"family":    "debian",
@@ -72,7 +74,7 @@ var (
 			Name:     "mysql",
 			Tag:      "5.7",
 			FullName: "mysql:5.7",
-			Created:  indextest.ParseTime("2016-06-30T09:05:06"),
+			Created:  indextest.ParseTime("2016-06-30T09:05:06Z"),
 			Label: map[string]string{
 				"type":      "sql",
 				"family":    "debian",
@@ -110,12 +112,14 @@ func (s *TestSuite) SetUpSuite(c *C) {
 
 	s.index = &index.Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: nil}
 
+}
+
+func (s *TestSuite) SetUpTest(c *C) {
 	for _, image := range images {
 		if err := s.index.Index.Index(image.FullName, image); err != nil {
 			logrus.WithError(err).Errorln("Failed to index image")
 		}
 	}
-
 }
 
 func (s *TestSuite) TestNameTagSearch(c *C) {
@@ -204,4 +208,19 @@ func (s *TestSuite) TestSearchResults(c *C) {
 	c.Assert(results.Hits[0].Fields["Labels"], DeepEquals, []interface{}{"type", "family", "framework"})
 	c.Assert(results.Hits[0].Fields["Envs"], DeepEquals, []interface{}{"PATH", "MYSQL_MAJOR", "MYSQL_VERSION"})
 
+}
+
+func (s *TestSuite) TestDeleteImage(c *C) {
+
+	for _, image := range images {
+		request := bleve.NewSearchRequest(index.BuildQuery("", fmt.Sprintf("+Name:%s +Tag:%s", image.Name, image.Tag)))
+		request.Fields = []string{"Name", "Tag"}
+		results, err := s.index.Search(request)
+		c.Assert(err, IsNil)
+		c.Assert(results.Hits, HasLen, 1)
+		s.index.DeleteImage(image.ID)
+		results, err = s.index.Search(request)
+		c.Assert(err, IsNil)
+		c.Assert(results.Hits, HasLen, 0)
+	}
 }

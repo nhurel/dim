@@ -92,11 +92,11 @@ func init() {
 // Dim instance has a dockerClient object to interact with docker daemon
 var Dim *dim.Dim
 
-func parseName(image string) (reference.Named, error) {
+func parseName(image, registryURL string) (reference.Named, error) {
 	var parsedName reference.Named
 	var err error
 	if parsedName, err = reference.ParseNamed(image); err != nil {
-		return nil, fmt.Errorf("Failed to parse the name of the remote repository image : %v", err)
+		return nil, fmt.Errorf("Failed to parse the name of the remote repository image %s : %v", image, err)
 	}
 	if parsedName.Hostname() == reference.DefaultHostname && !strings.HasPrefix(image, reference.DefaultHostname) {
 		fullURL, err := url.Parse(registryURL)

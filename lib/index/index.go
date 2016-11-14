@@ -15,6 +15,15 @@ import (
 	"github.com/nhurel/dim/lib/utils"
 )
 
+// RegistryIndex defines method to manage the indexation of a docker registry
+type RegistryIndex interface {
+	Build() <-chan bool
+	GetImageAndIndex(repository, tag string, dg digest.Digest) error
+	IndexImage(image *Image)
+	DeleteImage(id string)
+	SearchImages(q, a string, fields []string, offset, maxResults int) (*bleve.SearchResult, error)
+}
+
 // Index manages indexation of docker images
 type Index struct {
 	// Index is the bleve.Index instance
@@ -130,7 +139,6 @@ func (idx *Index) DeleteImage(id string) {
 	}
 	if sr.Total > 1 {
 		l.WithField("#hits", sr.Total).Warnln("Removing multiple images from index for this imageID")
-		return
 	}
 
 	for _, h := range sr.Hits {

@@ -78,7 +78,7 @@ func (r *NoOpRegistryRepository) Image(tag string) (img *registry.Image, err err
 	return
 }
 func (r *NoOpRegistryRepository) ImageFromManifest(tagDigest digest.Digest, digest string) (img *registry.Image, err error) {
-	return nil, nil
+	return repoImages["mysql:5.7"], nil
 }
 func (r *NoOpRegistryRepository) DeleteImage(tag string) error {
 	return nil
@@ -144,7 +144,7 @@ func TestRegistry(t *testing.T) { TestingT(t) }
 
 var _ = Suite(&RegistrySuite{})
 
-func (s *RegistrySuite) SetUpSuite(c *C) {
+func (s *RegistrySuite) SetUpTest(c *C) {
 
 	logrus.SetLevel(logrus.DebugLevel)
 	var i bleve.Index
@@ -173,6 +173,16 @@ func (s *RegistrySuite) TestBuild(c *C) {
 func (s *RegistrySuite) TestSearchImages(c *C) {
 	done := s.index.Build()
 	_ = <-done
+	sr, err := s.index.SearchImages("", "+Name:mysql +Tag:5.7", []string{"Name", "Tag", "FullName", "Labels", "Envs"}, 0, 5)
+	c.Assert(err, IsNil)
+	c.Assert(sr.Total, Equals, uint64(1))
+	c.Assert(sr.Hits[0].Fields["Label.family"], Equals, "mysql")
+	c.Assert(sr.Hits[0].Fields["Label.type"], Equals, "database")
+	c.Assert(sr.Hits[0].Fields["Env.MYSQL_VERSION"], Equals, "5.7")
+}
+
+func (s *RegistrySuite) TestGetImageAndIndex(c *C) {
+	s.index.GetImageAndIndex("mysql", "5.7", digest.FromBytes([]byte("digest")))
 	sr, err := s.index.SearchImages("", "+Name:mysql +Tag:5.7", []string{"Name", "Tag", "FullName", "Labels", "Envs"}, 0, 5)
 	c.Assert(err, IsNil)
 	c.Assert(sr.Total, Equals, uint64(1))

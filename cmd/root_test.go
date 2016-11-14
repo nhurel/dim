@@ -37,5 +37,31 @@ func TestGuessTag(t *testing.T) {
 		}
 
 	}
+}
+
+func TestParseName(t *testing.T) {
+	tests := []struct {
+		image       string
+		registryURL string
+		expected    string
+	}{
+		{"imagename", "https://private-registry.com", "private-registry.com/imagename"},
+		{"imagename:latest", "https://private-registry.com", "private-registry.com/imagename:latest"},
+		{"imagename:tag", "http://private-registry.com", "private-registry.com/imagename:tag"},
+		{"imagename:tag", "http://private-registry.com:5000", "private-registry.com:5000/imagename:tag"},
+	}
+	for _, test := range tests {
+
+		got, err := parseName(test.image, test.registryURL)
+
+		if err != nil {
+			t.Fatalf("pareseNamed return error %v", err)
+		}
+
+		if got.String() != test.expected {
+			t.Errorf("parseName returned %s. Expected %s", got.String(), test.expected)
+		}
+
+	}
 
 }

@@ -10,8 +10,14 @@ import (
 
 	"fmt"
 
+	"bytes"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
+	"github.com/docker/distribution"
+	"github.com/docker/distribution/digest"
+	"github.com/docker/distribution/manifest/schema2"
+	"github.com/docker/distribution/notifications"
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/lib/index/indextest"
 	"github.com/nhurel/dim/lib/utils"
@@ -27,7 +33,7 @@ var (
 			Name:         "mongodb",
 			Tag:          "latest",
 			FullName:     "mongodb:latest",
-			Created:      indextest.ParseTime("2016-07-24T09:05:06"),
+			Created:      indextest.ParseTime("2016-07-24T09:05:06Z"),
 			Volumes:      []string{"/data/configdb", "/data/db"},
 			ExposedPorts: []int{27017},
 			Env: map[string]string{
@@ -45,7 +51,7 @@ var (
 			Name:     "httpd",
 			Tag:      "2.4",
 			FullName: "httpd:2.4",
-			Created:  indextest.ParseTime("2016-06-23T09:05:06"),
+			Created:  indextest.ParseTime("2016-06-23T09:05:06Z"),
 			Label: map[string]string{
 				"type":      "web",
 				"family":    "debian",
@@ -76,7 +82,7 @@ var (
 			Name:         "debian",
 			Tag:          "wheezy",
 			FullName:     "debian:wheezy",
-			Created:      indextest.ParseTime("2016-06-30T09:05:06"),
+			Created:      indextest.ParseTime("2016-06-30T09:05:06Z"),
 			Env:          map[string]string{"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
 			Envs:         []string{"PATH"},
 			ExposedPorts: []int{3306},
@@ -86,7 +92,7 @@ var (
 			Name:     "alpine",
 			Tag:      "3.4",
 			FullName: "alpine:3.4",
-			Created:  indextest.ParseTime("2016-06-30T09:05:06"),
+			Created:  indextest.ParseTime("2016-06-30T09:05:06Z"),
 		},
 	}
 )
@@ -109,7 +115,7 @@ func TestSearch(t *testing.T) {
 
 	for _, image := range images {
 		response := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/search?a=Name:%s&f=Volumes&f=Env&f=Label&f=ExposedPorts", image.Name), nil)
+		request := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/search?a=Name:%s&f=Volumes&f=Env&f=Label&f=ExposedPorts&f=Created", image.Name), nil)
 
 		server.Search(ind, response, request)
 
@@ -151,6 +157,109 @@ func TestSearch(t *testing.T) {
 			}
 		}
 
+		if image.Created != sr.Results[0].Created {
+			t.Errorf("Expected created to be %v but got %v", image.Created, sr.Results[0].Created)
+		}
+
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/v1/search?f=Name", nil)
+	response := httptest.NewRecorder()
+	server.Search(ind, response, request)
+	if response.Result().StatusCode != http.StatusBadRequest {
+		t.Errorf("Search returned status %s instead of %d when called with no search param", response.Result().Status, http.StatusBadRequest)
+	}
+}
+
+type NoOpRegistryIndex struct {
+	calls map[string][]interface{}
+}
+
+func (i *NoOpRegistryIndex) Build() <-chan bool {
+	i.calls["Build"] = nil
+	return nil
+}
+func (i *NoOpRegistryIndex) GetImageAndIndex(repository, tag string, dg digest.Digest) error {
+	i.calls["GetImageAndIndex"] = []interface{}{repository, tag, dg}
+	return nil
+}
+func (i *NoOpRegistryIndex) IndexImage(image *index.Image) {
+	i.calls["IndexImage"] = []interface{}{image}
+}
+func (i *NoOpRegistryIndex) DeleteImage(id string) {
+	i.calls["DeleteImage"] = []interface{}{id}
+}
+func (i *NoOpRegistryIndex) SearchImages(q, a string, fields []string, offset, maxResults int) (*bleve.SearchResult, error) {
+	i.calls["SearchImages"] = []interface{}{q, a, fields, offset, maxResults}
+	return nil, nil
+}
+
+func TestNotifyImageChange(t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
+	ind := &NoOpRegistryIndex{calls: make(map[string][]interface{})}
+
+	deleteEventDigest := digest.NewDigestFromBytes(digest.Canonical, []byte("delete"))
+	deleteEvent := notifications.Event{
+		Action: notifications.EventActionDelete,
+	}
+	deleteEvent.Target.Descriptor = distribution.Descriptor{Digest: deleteEventDigest}
+
+	deleteEventMessage, err := json.Marshal(&notifications.Envelope{Events: []notifications.Event{deleteEvent}})
+
+	if err != nil {
+		t.Fatalf("Failed to create tests : %v", err)
+	}
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBuffer(deleteEventMessage))
+
+	server.NotifyImageChange(ind, response, request)
+
+	if ind.calls["DeleteImage"] == nil || ind.calls["DeleteImage"][0] != string(deleteEventDigest) {
+		t.Errorf("NotifyImageChange(deleteEvent) did not call index.DeleteImage with param %s. Called with %s", string(deleteEventDigest), ind.calls["DeleteImage"])
+	}
+
+	pushEventDigest := digest.NewDigestFromBytes(digest.Canonical, []byte("push"))
+	pushEvent := notifications.Event{
+		Action: notifications.EventActionPush,
+	}
+
+	pushEvent.Target.Repository = "pushRepository"
+	pushEvent.Target.Tag = "latest"
+	pushEvent.Target.Descriptor = distribution.Descriptor{
+		Digest:    pushEventDigest,
+		MediaType: schema2.MediaTypeManifest,
+	}
+
+	pushEventMessage, err := json.Marshal(&notifications.Envelope{Events: []notifications.Event{pushEvent}})
+
+	if err != nil {
+		t.Fatalf("Failed to create tests : %v", err)
+	}
+
+	response = httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBuffer(pushEventMessage))
+
+	server.NotifyImageChange(ind, response, request)
+
+	if ind.calls["GetImageAndIndex"] == nil {
+		t.Errorf("NotifyImageChange(pushEvent) did not call index.GetImageAndIndex %v", ind.calls)
+	} else {
+
+		if ind.calls["GetImageAndIndex"][0] != pushEvent.Target.Repository || // checking repository param
+			ind.calls["GetImageAndIndex"][1] != pushEvent.Target.Tag || // checking tag param
+			ind.calls["GetImageAndIndex"][2] != pushEventDigest { // checking digest param
+			t.Errorf("NotifyImageChange(pushEvent) called index.GetImageAndIndex with %v instead of  %s, %s, %v", ind.calls["GetImageAndIndex"], pushEvent.Target.Repository, pushEvent.Target.Tag, pushEventDigest)
+		}
+	}
+
+	badMessage := ""
+	response = httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBufferString(badMessage))
+
+	server.NotifyImageChange(ind, response, request)
+	if response.Result().StatusCode != http.StatusBadRequest {
+		t.Errorf("NotifyImaeChange(badRequest) returned status %s instead of %d", response.Result().Status, http.StatusBadRequest)
 	}
 
 }

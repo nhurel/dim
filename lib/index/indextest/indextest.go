@@ -10,7 +10,10 @@ import (
 
 // ParseTime converts a given string into time
 func ParseTime(value string) time.Time {
-	t, _ := time.Parse(time.RFC3339, value)
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		logrus.WithError(err).WithField("time", value).Error("failed to parse datetime")
+	}
 	return t
 }
 

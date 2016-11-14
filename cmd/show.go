@@ -49,7 +49,7 @@ Use the -r flag to print the details of an image on the private registry (not pr
 
 		if remoteFlag {
 			var parsedName reference.Named
-			if parsedName, err = parseName(image); err != nil {
+			if parsedName, err = parseName(image, registryURL); err != nil {
 				return err
 			}
 
