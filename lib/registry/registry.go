@@ -111,7 +111,7 @@ func (c *registryClient) Search(query, advanced string, offset, maxResults int) 
 		values.Set("q", q)
 	}
 
-	for _, field := range []string{"Name", "Tag", "FullName", "Labels", "Envs", "Volumes", "ExposedPorts", "Size"} {
+	for _, field := range []string{"Name", "Tag", "FullName", "Labels", "Envs", "Volumes", "ExposedPorts", "Size", "Created"} {
 		values.Add("f", field)
 	}
 

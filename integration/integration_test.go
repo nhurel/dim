@@ -87,7 +87,7 @@ func (s *IntegrationTestSuite) TestLabelAndSearch(c *C) {
 			c.Log(string(err.(*exec.ExitError).Stderr))
 		}
 		c.Assert(err, IsNil)
-		re := regexp.MustCompile("httpd\\s*first\\s*first=true, framework=apache, type=web\\s*")
+		re := regexp.MustCompile("httpd\\s*first.*first=true, framework=apache, type=web\\s*")
 		c.Assert(re.MatchString(string(result)), Equals, true)
 	}
 
@@ -162,7 +162,7 @@ func (s *IntegrationTestSuite) TestVolumeOutput(c *C) {
 		c.Log(string(err.(*exec.ExitError).Stderr))
 	}
 	c.Assert(err, IsNil)
-	re := regexp.MustCompile("redis\\s*3.2.1-alpine\\s*[/data]")
+	re := regexp.MustCompile("redis\\s*3.2.1-alpine.*[/data]")
 	c.Assert(re.MatchString(string(result)), Equals, true)
 }
 

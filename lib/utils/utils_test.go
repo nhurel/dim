@@ -5,6 +5,8 @@ import (
 	"sort"
 	"testing"
 
+	"time"
+
 	"github.com/docker/engine-api/types"
 )
 
@@ -293,5 +295,36 @@ func TestAskPassword(t *testing.T) {
 		if auth.Password != scenario.expectedPassword {
 			t.Errorf("askPassword(%s) returned '%s' instead of '%s'", scenario.password, auth.Password, scenario.expectedPassword)
 		}
+	}
+}
+
+func TestParseDuration(t *testing.T) {
+	scenarii := []struct {
+		since    time.Duration
+		expected string
+	}{
+		{time.Hour + time.Minute, "1 hour ago"},
+		{3*time.Hour + 10*time.Minute, "3 hours ago"},
+		{time.Minute + 50*time.Second, "2 minutes ago"},
+		{time.Minute + 10*time.Second, "1 minute ago"},
+		{15*time.Minute + 29*time.Second, "15 minutes ago"},
+		{30 * time.Second, "30 seconds ago"},
+		{1 * time.Second, "1 second ago"},
+		{2 * time.Hour, "2 hours ago"},
+		{30 * time.Hour, "30 hours ago"},
+		{48 * time.Hour, "2 days ago"},
+		{24 * 7 * time.Hour, "7 days ago"},
+		{24 * 12 * time.Hour, "12 days ago"},
+		{24 * 7 * 2 * time.Hour, "2 weeks ago"},
+		{24 * 7 * 6 * time.Hour, "6 weeks ago"},
+		{24 * 7 * 8 * time.Hour, "2 months ago"},
+		{24 * 7 * 4 * 18 * time.Hour, "18 months ago"},
+	}
+
+	for _, scenario := range scenarii {
+		if got := ParseDuration(scenario.since); got != scenario.expected {
+			t.Errorf("ParseDuration(%s) returned '%s' instead of '%s'", scenario.since.String(), got, scenario.expected)
+		}
+
 	}
 }

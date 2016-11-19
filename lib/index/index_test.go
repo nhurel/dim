@@ -177,6 +177,8 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 		{"Envs:HTTP*", []string{"httpd"}},
 		{"apache", []string{"httpd"}},
 		{"*", []string{"centos", "httpd", "mysql"}},
+		{"+Created:>\"2016-07-01T00:00:00Z\"", []string{"centos"}},
+		{"+Created:<\"2016-06-24T00:00:00Z\"", []string{"httpd"}},
 	}
 
 	for _, t := range tests {

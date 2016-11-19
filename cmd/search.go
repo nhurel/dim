@@ -8,6 +8,8 @@ import (
 
 	"strconv"
 
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
@@ -66,9 +68,9 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 			fmt.Fprintf(os.Stderr, "%d results found :\n", results.NumResults)
 			printer := cli.NewTabPrinter(os.Stdout)
 			printer.Width = widthFlag
-			printer.Append([]string{"Name", "Tag", "Labels", "Volumes", "Ports"})
+			printer.Append([]string{"Name", "Tag", "Created", "Labels", "Volumes", "Ports"})
 			for _, r := range results.Results {
-				printer.Append([]string{r.Name, r.Tag, utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
+				printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
 			}
 			printer.PrintAll(false)
 			for fetched := len(results.Results); results.NumResults > fetched; {
@@ -76,7 +78,7 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 					return fmt.Errorf("Failed to search images : %v", err)
 				}
 				for _, r := range results.Results {
-					printer.Append([]string{r.Name, r.Tag, utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
+					printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
 				}
 				printer.PrintAll(true)
 				fetched += len(results.Results)

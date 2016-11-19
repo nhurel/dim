@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/howeyc/gopass"
@@ -143,4 +145,40 @@ func FlatMap(m map[string]string) string {
 	}
 	sort.Strings(entries)
 	return strings.Join(entries, ", ")
+}
+
+func ParseDuration(since time.Duration) string {
+	if since.Hours() > 24 {
+		return parseHours(since.Hours())
+	}
+	if since.Minutes() >= 90 {
+		return fmt.Sprintf("%0.f hours ago", since.Hours())
+	}
+	if since.Minutes() < 90 && since.Minutes() > 60 {
+		return "1 hour ago"
+	}
+	if since.Seconds() > 90 {
+		return fmt.Sprintf("%0.f minutes ago", since.Minutes())
+	}
+	if since.Seconds() > 60 {
+		return "1 minute ago"
+	}
+	if since.Seconds() < 1.5 {
+		return "1 second ago"
+	}
+	return fmt.Sprintf("%0.f seconds ago", since.Seconds())
+}
+
+func parseHours(hours float64) string {
+	if hours < 48 {
+		return fmt.Sprintf("%0.f hours ago", hours)
+	}
+	if hours < 24*7*2 {
+		return fmt.Sprintf("%0.f days ago", hours/(24))
+	}
+	if hours < 24*7*4*2 {
+		return fmt.Sprintf("%0.f weeks ago", hours/(24*7))
+	}
+
+	return fmt.Sprintf("%0.f months ago", hours/(24*7*4))
 }
