@@ -77,6 +77,7 @@ func ReadCredentials(registryAuth *types.AuthConfig) {
 
 }
 
+// InputReader defines a method that can read into a string
 type InputReader func(a ...interface{}) (int, error)
 
 func askUsername(registryAuth *types.AuthConfig, read InputReader, w io.Writer) {
@@ -147,6 +148,7 @@ func FlatMap(m map[string]string) string {
 	return strings.Join(entries, ", ")
 }
 
+// ParseDuration returns a string representation of a duration
 func ParseDuration(since time.Duration) string {
 	if since.Hours() > 24 {
 		return parseHours(since.Hours())
