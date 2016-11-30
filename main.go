@@ -14,21 +14,26 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/nhurel/dim/cmd"
+	"golang.org/x/net/context"
+	"github.com/nhurel/dim/lib/environment"
+	"github.com/nhurel/dim/cli"
 )
 
 // Version stores current version of dim (see Makefile)
 var Version string
 
 func main() {
-	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "version") {
-		fmt.Printf("dim version : %s\n", Version)
+	c := &cli.Cli{In:os.Stdin, Out:os.Stdout, Err:os.Stderr}
+	ctx := environment.Set(context.Background(), environment.VersionKey, Version)
+
+	if len(os.Args) == 2 && (os.Args[1] == "--version") {
+		cmd.PrintVersion(c, ctx)
 		os.Exit(0)
 	}
-	if err := cmd.RootCommand.Execute(); err != nil {
+	if err := cmd.NewRootCommand(c, ctx).Execute(); err != nil {
 		os.Exit(1)
 	}
 	os.Exit(0)

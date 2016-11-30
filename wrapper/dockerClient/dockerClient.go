@@ -31,6 +31,7 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
+	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib/utils"
 	"golang.org/x/net/context"
 )
@@ -47,6 +48,7 @@ type Docker interface {
 // DockerClient implements Docker interface
 type DockerClient struct {
 	c        *client.Client
+	Cli      *cli.Cli
 	Auth     *types.AuthConfig
 	Insecure bool
 }
@@ -161,7 +163,7 @@ func (dc *DockerClient) Authenticate(registryURL string) (string, error) {
 	var err error
 
 	for resp, err = http.DefaultClient.Do(req); (resp == nil || resp.StatusCode == http.StatusUnauthorized) && err == nil; {
-		utils.ReadCredentials(dc.Auth)
+		cli.ReadCredentials(dc.Cli, dc.Auth)
 		logrus.WithFields(logrus.Fields{"URL": req.URL, "Login": dc.Auth.Username, "Password": dc.Auth.Password}).Debugln("Testing credentials")
 		req.SetBasicAuth(dc.Auth.Username, dc.Auth.Password)
 		resp, err = http.DefaultClient.Do(req)

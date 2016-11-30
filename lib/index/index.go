@@ -24,6 +24,7 @@ import (
 	"github.com/docker/distribution/digest"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
+	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/lib/utils"
 )
@@ -52,7 +53,7 @@ type repoImage struct {
 }
 
 // New create a new instance to manage a index of a given registry into a specific directory
-func New(dir string, registryURL string, registryAuth *types.AuthConfig) (*Index, error) {
+func New(dir string, registryURL string, c *cli.Cli, registryAuth *types.AuthConfig) (*Index, error) {
 	var i bleve.Index
 	var reg registry.Client
 	var err error
@@ -63,7 +64,7 @@ func New(dir string, registryURL string, registryAuth *types.AuthConfig) (*Index
 		return nil, err
 	}
 
-	if reg, err = registry.New(registryAuth, registryURL); err != nil {
+	if reg, err = registry.New(c, registryAuth, registryURL); err != nil {
 		return nil, err
 	}
 

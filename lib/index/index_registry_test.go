@@ -69,6 +69,10 @@ func (r *NoOpRegistryClient) DeleteImage(parsedName reference.Named) error {
 	return nil
 }
 
+func (r *NoOpRegistryClient) ServerVersion() (*types.Info, error) {
+	return nil, nil
+}
+
 type NoOpRegistryRepository struct {
 	distribution.Repository
 	name string

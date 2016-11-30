@@ -20,9 +20,12 @@ import (
 
 	"net/url"
 
+	"context"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types"
+	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/nhurel/dim/wrapper/dockerClient"
@@ -30,59 +33,51 @@ import (
 	"github.com/spf13/viper"
 )
 
-// RootCommand is the main cobraCommand all other commands are attached to
-var RootCommand = &cobra.Command{
-	Use:          "dim",
-	Short:        "Docker Image Management is a simple cli to manage docker images",
-	SilenceUsage: true,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		switch logLevel {
-		case "debug":
-			logrus.SetLevel(logrus.DebugLevel)
-		case "info":
-			logrus.SetLevel(logrus.InfoLevel)
-		case "warn":
-			logrus.SetLevel(logrus.WarnLevel)
-		case "error":
-			logrus.SetLevel(logrus.ErrorLevel)
-		case "fatal":
-			logrus.SetLevel(logrus.FatalLevel)
-		}
+// NewRootCommand builds the whole command list
+func NewRootCommand(cli *cli.Cli, ctx context.Context) *cobra.Command {
+	rootCommand := &cobra.Command{
+		Use:          "dim",
+		Short:        "Docker Image Management is a simple cli to manage docker images",
+		SilenceUsage: true,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			switch logLevel {
+			case "debug":
+				logrus.SetLevel(logrus.DebugLevel)
+			case "info":
+				logrus.SetLevel(logrus.InfoLevel)
+			case "warn":
+				logrus.SetLevel(logrus.WarnLevel)
+			case "error":
+				logrus.SetLevel(logrus.ErrorLevel)
+			case "fatal":
+				logrus.SetLevel(logrus.FatalLevel)
+			}
 
-		u := viper.GetString("registry-url")
-		registryURL = utils.BuildURL(u, insecure)
+			u := viper.GetString("registry-url")
+			registryURL = utils.BuildURL(u, insecure)
 
-		username = viper.GetString("registry-user")
-		password = viper.GetString("registry-password")
+			username = viper.GetString("registry-user")
+			password = viper.GetString("registry-password")
 
-		var authConfig *types.AuthConfig
-		if username != "" || password != "" {
-			authConfig = &types.AuthConfig{Username: username, Password: password}
-		}
+			var authConfig *types.AuthConfig
+			if username != "" || password != "" {
+				authConfig = &types.AuthConfig{Username: username, Password: password}
+			}
 
-		Dim = &dim.Dim{Docker: &dockerClient.DockerClient{Auth: authConfig, Insecure: insecure}}
-	},
-	BashCompletionFunction: bashCompletionFunc,
-}
+			Dim = &dim.Dim{Docker: &dockerClient.DockerClient{Cli: cli, Auth: authConfig, Insecure: insecure}}
+		},
+		BashCompletionFunction: bashCompletionFunc,
+	}
 
-var logLevel string
-var (
-	registryURL string
-	username    string
-	password    string
-	insecure    bool
-)
-
-func init() {
-	RootCommand.PersistentFlags().StringVarP(&logLevel, "log", "l", "warn", "Set log level")
-	RootCommand.PersistentFlags().String("registry-url", "", "Registry URL or hostname")
-	RootCommand.PersistentFlags().String("registry-user", "", "Registry username")
-	RootCommand.PersistentFlags().String("registry-password", "", "Registry password")
-	RootCommand.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Connect to registry through http instead of https")
+	rootCommand.PersistentFlags().StringVarP(&logLevel, "log", "l", "warn", "Set log level")
+	rootCommand.PersistentFlags().String("registry-url", "", "Registry URL or hostname")
+	rootCommand.PersistentFlags().String("registry-user", "", "Registry username")
+	rootCommand.PersistentFlags().String("registry-password", "", "Registry password")
+	rootCommand.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Connect to registry through http instead of https")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-	viper.BindPFlag("registry-url", RootCommand.PersistentFlags().Lookup("registry-url"))
-	viper.BindPFlag("registry-user", RootCommand.PersistentFlags().Lookup("registry-user"))
-	viper.BindPFlag("registry-password", RootCommand.PersistentFlags().Lookup("registry-password"))
+	viper.BindPFlag("registry-url", rootCommand.PersistentFlags().Lookup("registry-url"))
+	viper.BindPFlag("registry-user", rootCommand.PersistentFlags().Lookup("registry-user"))
+	viper.BindPFlag("registry-password", rootCommand.PersistentFlags().Lookup("registry-password"))
 	viper.BindEnv("registry-url")
 	viper.BindEnv("registry-user")
 	viper.BindEnv("registry-password")
@@ -100,7 +95,24 @@ func init() {
 		}
 	}
 
+	newDeleteCommand(cli, rootCommand, ctx)
+	newGenBashCompletionCommand(cli, rootCommand, ctx)
+	newLabelCommand(cli, rootCommand, ctx)
+	newSearchCommand(cli, rootCommand, ctx)
+	newServerCommand(cli, rootCommand, ctx)
+	newShowCommand(cli, rootCommand, ctx)
+	newVersionCommand(cli, rootCommand, ctx)
+
+	return rootCommand
 }
+
+var logLevel string
+var (
+	registryURL string
+	username    string
+	password    string
+	insecure    bool
+)
 
 // Dim instance has a dockerClient object to interact with docker daemon
 var Dim *dim.Dim

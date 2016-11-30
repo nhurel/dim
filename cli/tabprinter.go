@@ -15,13 +15,13 @@ package cli
 
 import (
 	"io"
-	"os"
 	"strings"
 	"text/template"
 )
 
 // TabPrinter prints data in tabular format. It computes column width and support incremental data population
 type TabPrinter struct {
+	r         io.Reader
 	w         io.Writer
 	widths    []int
 	rows      [][]string
@@ -32,8 +32,8 @@ type TabPrinter struct {
 }
 
 // NewTabPrinter returns a TabPrinter with sane defaults
-func NewTabPrinter(writer io.Writer) *TabPrinter {
-	return &TabPrinter{w: writer, Separator: '\t', Width: 80, rows: make([][]string, 0, 20)}
+func NewTabPrinter(writer io.Writer, reader io.Reader) *TabPrinter {
+	return &TabPrinter{w: writer, r: reader, Separator: '\t', Width: 80, rows: make([][]string, 0, 20)}
 }
 
 // Append adds a row of data to the collection of data to print
@@ -58,7 +58,7 @@ func (t *TabPrinter) PrintAll(wait bool) error {
 	for _, row := range t.rows[t.position:] {
 		if wait {
 			var b = make([]byte, 1, 1)
-			os.Stdin.Read(b)
+			t.r.Read(b)
 		}
 		t.position++
 

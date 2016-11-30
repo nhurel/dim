@@ -21,12 +21,15 @@ import (
 	"strings"
 	"time"
 
+	"context"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/search"
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/notifications"
 	"github.com/mailgun/manners"
+	"github.com/nhurel/dim/lib/environment"
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/types"
 )
@@ -38,9 +41,11 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance to listen on given port and use given index
-func NewServer(port string, index *index.Index) *Server {
+func NewServer(port string, index *index.Index, ctx context.Context) *Server {
+	c := environment.Set(ctx, environment.StartTimeKey, time.Now())
 	http.HandleFunc("/v1/search", handler(index, Search))
 	http.HandleFunc("/dim/notify", handler(index, NotifyImageChange))
+	http.HandleFunc("/dim/version", buildVersionHandler(c))
 	http.HandleFunc("/v2/_catalog", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "{}")
@@ -57,6 +62,31 @@ func (s *Server) Run() error {
 func handler(i *index.Index, dhf DimHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		dhf(i, w, r)
+	}
+}
+
+func buildVersionHandler(ctx context.Context) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		Version(ctx, w, r)
+	}
+}
+
+// Version return server info including info and uptime
+func Version(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	info := types.Info{}
+	v := environment.Get(ctx, environment.VersionKey)
+	if v != nil {
+		info.Version = v.(string)
+	}
+	start := environment.Get(ctx, environment.StartTimeKey)
+	if start != nil {
+		info.Uptime = time.Now().Sub(start.(time.Time)).String()
+	}
+	if b, err := json.Marshal(info); err != nil {
+		http.Error(w, "Failed to serialize the response", http.StatusInternalServerError)
+		logrus.WithError(err).Errorln("Error occured while serializing server info")
+	} else {
+		fmt.Fprint(w, string(b))
 	}
 }
 

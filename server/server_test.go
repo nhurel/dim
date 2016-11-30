@@ -25,18 +25,22 @@ import (
 
 	"bytes"
 
+	"context"
+	"encoding/json"
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/notifications"
+	"github.com/nhurel/dim/lib/environment"
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/lib/index/indextest"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/nhurel/dim/server"
 	"github.com/nhurel/dim/types"
-	"gopkg.in/square/go-jose.v1/json"
 )
 
 var (
@@ -273,6 +277,53 @@ func TestNotifyImageChange(t *testing.T) {
 	server.NotifyImageChange(ind, response, request)
 	if response.Result().StatusCode != http.StatusBadRequest {
 		t.Errorf("NotifyImaeChange(badRequest) returned status %s instead of %d", response.Result().Status, http.StatusBadRequest)
+	}
+
+}
+
+func TestVersion(t *testing.T) {
+
+	scenarii := []struct {
+		given    context.Context
+		expected types.Info
+	}{
+		{
+			given:    context.Background(),
+			expected: types.Info{Version: ""},
+		},
+		{
+			given:    environment.Set(context.Background(), environment.VersionKey, "1.0.0"),
+			expected: types.Info{Version: "1.0.0"},
+		},
+		{
+			given:    environment.Set(environment.Set(context.Background(), environment.VersionKey, "1.0.0"), environment.StartTimeKey, time.Now()),
+			expected: types.Info{Version: "1.0.0", Uptime: "100ms"},
+		},
+	}
+	for _, scenario := range scenarii {
+		w := httptest.NewRecorder()
+		server.Version(scenario.given, w, nil)
+
+		got := &types.Info{}
+		b, err := ioutil.ReadAll(w.Result().Body)
+		if err != nil {
+			t.Fatalf("Failed to parse response : %v", err)
+		}
+		if err := json.Unmarshal(b, got); err != nil {
+			t.Fatalf("Failed to parse response : %v", err)
+		}
+		if got.Version != scenario.expected.Version {
+			t.Errorf("/dim/version returned %s instead of %s", got.Version, scenario.expected.Version)
+		}
+		if scenario.expected.Uptime == "" && got.Uptime != "" {
+			t.Errorf("/dim/version return an unexpected uptime. Got %s - Expected %d", got.Uptime, scenario.expected.Uptime)
+		}
+		if scenario.expected.Uptime != "" {
+			if _, err := time.ParseDuration(got.Uptime); err != nil {
+				t.Errorf("/dim/version returned  a wrong uptime %s : %v", got.Uptime, err)
+			}
+
+		}
 	}
 
 }

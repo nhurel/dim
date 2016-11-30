@@ -11,22 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package types
 
-import (
-	"context"
-
-	"github.com/nhurel/dim/cli"
-	"github.com/spf13/cobra"
-)
-
-func newGenBashCompletionCommand(c *cli.Cli, rootCommand *cobra.Command, ctx context.Context) {
-	genBashCompletionCommand := &cobra.Command{
-		Hidden: true,
-		Use:    "autocomplete",
-		Run: func(cmd *cobra.Command, args []string) {
-			rootCommand.GenBashCompletionFile("dim_compl")
-		},
-	}
-	rootCommand.AddCommand(genBashCompletionCommand)
+// Info represents the server version endpoint payload
+type Info struct {
+	// Version returns the version of dim running server side
+	Version string `json:"version"`
+	// Uptime returns the server uptime in nanoseconds
+	Uptime string `json:"uptime"`
 }

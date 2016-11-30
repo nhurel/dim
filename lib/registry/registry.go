@@ -31,7 +31,7 @@ import (
 	"github.com/docker/docker/registry"
 	"github.com/docker/engine-api/types"
 	imageParser "github.com/docker/engine-api/types/reference"
-	"github.com/nhurel/dim/lib/utils"
+	"github.com/nhurel/dim/cli"
 	t "github.com/nhurel/dim/types"
 	"golang.org/x/net/context"
 )
@@ -44,6 +44,7 @@ type Client interface {
 	WalkRepositories() <-chan Repository
 	PrintImageInfo(out io.Writer, parsedName reference.Named, tpl *template.Template) error
 	DeleteImage(parsedName reference.Named) error
+	ServerVersion() (*t.Info, error)
 }
 
 // RegistryClient implements Client interface
@@ -56,7 +57,16 @@ type registryClient struct {
 var ctx = context.Background()
 
 // New creates a registry client. Handles getting right credentials from user
-func New(registryAuth *types.AuthConfig, registryURL string) (Client, error) {
+func New(c *cli.Cli, registryAuth *types.AuthConfig, registryURL string) (Client, error) {
+	return tryNew(c, registryAuth, registryURL, true)
+}
+
+// SilentNew creates a registry client but doesn't prompt credentials when required
+func SilentNew(c *cli.Cli, registryAuth *types.AuthConfig, registryURL string) (Client, error) {
+	return tryNew(c, registryAuth, registryURL, false)
+}
+
+func tryNew(c *cli.Cli, registryAuth *types.AuthConfig, registryURL string, prompt bool) (Client, error) {
 	var err error
 	var reg client.Registry
 
@@ -81,11 +91,14 @@ func New(registryAuth *types.AuthConfig, registryURL string) (Client, error) {
 		case *client.UnexpectedHTTPStatusError, *url.Error, *client.UnexpectedHTTPResponseError:
 			return nil, fmt.Errorf("Failed to join the registry : %v", err)
 		}
+		if !prompt {
+			break
+		}
 		l.Debugln("Prompting for credentials")
 		if registryAuth == nil {
 			registryAuth = &types.AuthConfig{}
 		}
-		utils.ReadCredentials(registryAuth)
+		cli.ReadCredentials(c, registryAuth)
 		transport = registry.AuthTransport(transport, registryAuth, true)
 		if reg, err = client.NewRegistry(ctx, registryURL, transport); err != nil {
 			return nil, err
@@ -132,7 +145,7 @@ func (c *registryClient) Search(query, advanced string, offset, maxResults int) 
 	values.Set("maxResults", strconv.Itoa(maxResults))
 
 	httpClient := http.Client{Transport: c.transport}
-	if resp, err = httpClient.PostForm(strings.Join([]string{c.registryURL, "/v1/search"}, ""), values); err != nil {
+	if resp, err = httpClient.PostForm(strings.Join([]string{c.registryURL, "/v1/search"}, "/"), values); err != nil {
 		return nil, fmt.Errorf("Failed to send request : %v", err)
 	}
 	defer resp.Body.Close()
@@ -257,4 +270,26 @@ func (c *registryClient) DeleteImage(parsedName reference.Named) error {
 	}
 
 	return nil
+}
+
+// ServerVersion read dim server version information
+func (c *registryClient) ServerVersion() (*t.Info, error) {
+	var resp *http.Response
+	var err error
+	httpClient := http.Client{Transport: c.transport}
+
+	if resp, err = httpClient.Get(strings.Join([]string{c.registryURL, "/dim/version"}, "/")); err != nil {
+		return nil, fmt.Errorf("Failed to send request : %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		infos := &t.Info{}
+		if err := json.NewDecoder(resp.Body).Decode(infos); err != nil {
+			return nil, fmt.Errorf("Failed to parse response : %v", err)
+		}
+
+		return infos, nil
+	}
+
+	return nil, fmt.Errorf("Server returned an error : %s", resp.Status)
 }

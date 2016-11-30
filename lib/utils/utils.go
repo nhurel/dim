@@ -18,14 +18,7 @@ import (
 	"sort"
 	"strings"
 
-	"io"
-	"os"
-
 	"time"
-
-	"github.com/Sirupsen/logrus"
-	"github.com/docker/engine-api/types"
-	"github.com/howeyc/gopass"
 )
 
 // ListContains checks a list of string contains a given string
@@ -76,59 +69,6 @@ func FilterValues(m map[string]string, s string) map[string]string {
 	}
 	return filtered
 
-}
-
-// ReadCredentials ask the user to enter his login and password and stores the value in the given registryAuth
-func ReadCredentials(registryAuth *types.AuthConfig) {
-	logrus.WithFields(logrus.Fields{"Login": registryAuth.Username, "Password": registryAuth.Password}).Debugln("Reading new credentials")
-	askUsername(registryAuth, fmt.Scanln, os.Stdout)
-	if registryAuth.Username == "" {
-		return
-	}
-
-	askPassword(registryAuth, readPassword, os.Stdout)
-
-}
-
-// InputReader defines a method that can read into a string
-type InputReader func(a ...interface{}) (int, error)
-
-func askUsername(registryAuth *types.AuthConfig, read InputReader, w io.Writer) {
-	var prompt string
-	if registryAuth.Username != "" {
-		prompt = fmt.Sprintf("Username (%s) :", registryAuth.Username)
-	} else {
-		prompt = fmt.Sprint("Username :")
-	}
-	input := ask(prompt, read, w)
-	if input != "" {
-		registryAuth.Username = input
-	}
-
-}
-
-func ask(prompt string, read InputReader, w io.Writer) string {
-	fmt.Fprint(w, prompt)
-	var input string
-	read(&input)
-	return input
-}
-
-func askPassword(registryAuth *types.AuthConfig, read InputReader, w io.Writer) {
-	input := ask("Password :", read, w)
-	if input != "" {
-		registryAuth.Password = input
-	}
-}
-
-func readPassword(a ...interface{}) (int, error) {
-	pass, err := gopass.GetPasswd()
-	if a, ok := a[0].(*string); ok {
-		*a = string(pass)
-	} else {
-		err = fmt.Errorf("Only reading string is supported")
-	}
-	return 1, err
 }
 
 // BuildURL appends http:// or https:// to given hostname, according to the insecure parameter
