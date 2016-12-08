@@ -36,15 +36,34 @@ type RegistryIndex interface {
 	IndexImage(image *Image)
 	DeleteImage(id string)
 	SearchImages(q, a string, fields []string, offset, maxResults int) (*bleve.SearchResult, error)
+	Submit(job *NotificationJob)
 }
 
 // Index manages indexation of docker images
 type Index struct {
 	// Index is the bleve.Index instance
 	bleve.Index
-	RegistryURL  string
-	RegistryAuth *types.AuthConfig
-	RegClient    registry.Client
+	RegistryURL   string
+	RegistryAuth  *types.AuthConfig
+	RegClient     registry.Client
+	notifications chan *NotificationJob
+}
+
+// ActionType indicates the kind of a NotificationJob
+type ActionType string
+
+// DeleteAction indicates a NotificationJob should delete an image from the index
+const DeleteAction ActionType = "delete"
+
+// PushAction indicates a NotificationJob should add or update an image in the index
+const PushAction ActionType = "push"
+
+// NotificationJob stores info to reindex an image after a push or deletion
+type NotificationJob struct {
+	Action     ActionType
+	Repository string
+	Tag        string
+	Digest     digest.Digest
 }
 
 type repoImage struct {
@@ -68,7 +87,10 @@ func New(dir string, registryURL string, c *cli.Cli, registryAuth *types.AuthCon
 		return nil, err
 	}
 
-	return &Index{i, registryURL, registryAuth, reg}, nil
+	notifications := make(chan *NotificationJob, 10)
+	index := &Index{i, registryURL, registryAuth, reg, notifications}
+	index.loop(3)
+	return index, nil
 }
 
 // Build creates a full index from the registry.
@@ -79,7 +101,7 @@ func (idx *Index) Build() <-chan bool {
 	go func() {
 		repositories := idx.RegClient.WalkRepositories()
 
-		images := make(chan *repoImage, 3)
+		images := make(chan *repoImage, 10)
 
 		submitWg := sync.WaitGroup{}
 		for repository := range repositories {
@@ -98,6 +120,7 @@ func (idx *Index) Build() <-chan bool {
 				doneWG.Add(1)
 				go func(n string, i *registry.Image) {
 					defer doneWG.Done()
+					logrus.WithField("reponame", n).Infoln("Indexing image")
 					idx.IndexImage(Parse(n, i))
 				}(img.repoName, img.image)
 			}
@@ -258,4 +281,30 @@ func (idx *Index) searchDetails(doc *search.DocumentMatch, fields []string) (*se
 	}
 
 	return sr.Hits[0], err
+}
+
+//Submit pushes a NotificationJob that will be applied to the index
+func (idx *Index) Submit(job *NotificationJob) {
+	idx.notifications <- job
+}
+
+func (idx *Index) loop(parallels int) {
+	for i := 0; i < parallels; i++ {
+		go idx.handleNotifications()
+	}
+}
+
+func (idx *Index) handleNotifications() {
+	for job := range idx.notifications {
+		logrus.WithField("Event", job).Errorln("Handling notification")
+
+		switch job.Action {
+		case DeleteAction:
+			idx.DeleteImage(job.Digest.String())
+		case PushAction:
+			if err := idx.GetImageAndIndex(job.Repository, job.Tag, job.Digest); err != nil {
+				logrus.WithField("Event", job).WithError(err).Errorln("Failed to reindex image")
+			}
+		}
+	}
 }

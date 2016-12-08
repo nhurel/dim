@@ -167,7 +167,7 @@ func (r *registryRepository) WalkImages() <-chan *Image {
 
 // WalkImages walks through all images of the repository and writes them in the given channel
 func WalkImages(r Repository) <-chan *Image {
-	images := make(chan *Image)
+	images := make(chan *Image, 3)
 
 	go func() {
 		defer close(images)

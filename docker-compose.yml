@@ -33,6 +33,7 @@ services:
     - 6000:6000
   networks:
     - registry
+  command: server -l info
  apache:
    container_name: apache
    restart: always

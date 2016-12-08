@@ -211,6 +211,10 @@ func (i *NoOpRegistryIndex) SearchImages(q, a string, fields []string, offset, m
 	return nil, nil
 }
 
+func (i *NoOpRegistryIndex) Submit(job *index.NotificationJob) {
+	i.calls["Submit"] = []interface{}{job}
+}
+
 func TestNotifyImageChange(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 	ind := &NoOpRegistryIndex{calls: make(map[string][]interface{})}
@@ -232,8 +236,8 @@ func TestNotifyImageChange(t *testing.T) {
 
 	server.NotifyImageChange(ind, response, request)
 
-	if ind.calls["DeleteImage"] == nil || ind.calls["DeleteImage"][0] != string(deleteEventDigest) {
-		t.Errorf("NotifyImageChange(deleteEvent) did not call index.DeleteImage with param %s. Called with %s", string(deleteEventDigest), ind.calls["DeleteImage"])
+	if ind.calls["Submit"] == nil || ind.calls["Submit"][0].(*index.NotificationJob).Action != index.DeleteAction {
+		t.Errorf("NotifyImageChange(deleteEvent) did not submit a job with action %s. Called with %v", index.DeleteAction, ind.calls["Submit"][0])
 	}
 
 	pushEventDigest := digest.NewDigestFromBytes(digest.Canonical, []byte("push"))
@@ -259,14 +263,15 @@ func TestNotifyImageChange(t *testing.T) {
 
 	server.NotifyImageChange(ind, response, request)
 
-	if ind.calls["GetImageAndIndex"] == nil {
+	if ind.calls["Submit"] == nil {
 		t.Errorf("NotifyImageChange(pushEvent) did not call index.GetImageAndIndex %v", ind.calls)
 	} else {
-
-		if ind.calls["GetImageAndIndex"][0] != pushEvent.Target.Repository || // checking repository param
-			ind.calls["GetImageAndIndex"][1] != pushEvent.Target.Tag || // checking tag param
-			ind.calls["GetImageAndIndex"][2] != pushEventDigest { // checking digest param
-			t.Errorf("NotifyImageChange(pushEvent) called index.GetImageAndIndex with %v instead of  %s, %s, %v", ind.calls["GetImageAndIndex"], pushEvent.Target.Repository, pushEvent.Target.Tag, pushEventDigest)
+		j := ind.calls["Submit"][0].(*index.NotificationJob)
+		if j.Action != index.PushAction ||
+			j.Repository != pushEvent.Target.Repository || // checking repository param
+			j.Tag != pushEvent.Target.Tag || // checking tag param
+			j.Digest != pushEventDigest { // checking digest param
+			t.Errorf("NotifyImageChange(pushEvent) called index.Submit with %v instead of  %s, %s, %s, %v", ind.calls["GetImageAndIndex"], index.PushAction, pushEvent.Target.Repository, pushEvent.Target.Tag, pushEventDigest)
 		}
 	}
 

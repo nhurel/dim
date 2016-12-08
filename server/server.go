@@ -93,7 +93,7 @@ func Version(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // NotifyImageChange handles docker registry events
 func NotifyImageChange(i index.RegistryIndex, w http.ResponseWriter, r *http.Request) {
 
-	logrus.Infoln("Receiving event from registry")
+	logrus.Debugln("Receiving event from registry")
 	defer r.Body.Close()
 
 	enveloppe := &notifications.Envelope{}
@@ -113,12 +113,16 @@ func NotifyImageChange(i index.RegistryIndex, w http.ResponseWriter, r *http.Req
 	for _, event := range enveloppe.Events {
 		switch event.Action {
 		case notifications.EventActionDelete:
-			i.DeleteImage(string(event.Target.Digest))
+			logrus.WithField("enveloppe", enveloppe).Infoln("Processing delete event")
+			i.Submit(&index.NotificationJob{Action: index.DeleteAction, Digest: event.Target.Digest})
+		// i.DeleteImage(event.Target.Digest.String())
 		case notifications.EventActionPush:
 			if event.Target.MediaType == schema2.MediaTypeManifest {
-				if err := i.GetImageAndIndex(event.Target.Repository, event.Target.Tag, event.Target.Digest); err != nil {
-					logrus.WithField("EventTarget", event.Target).WithError(err).Errorln("Failed to reindex image")
-				}
+				logrus.WithField("enveloppe", enveloppe).Infoln("Processing push event")
+				i.Submit(&index.NotificationJob{Action: index.PushAction, Repository: event.Target.Repository, Tag: event.Target.Tag, Digest: event.Target.Digest})
+				//if err := i.GetImageAndIndex(event.Target.Repository, event.Target.Tag, event.Target.Digest); err != nil {
+				//	logrus.WithField("EventTarget", event.Target).WithError(err).Errorln("Failed to reindex image")
+				//}
 			} else {
 				logrus.WithField("mediatype", event.Target.MediaType).WithField("Event", event).Debugln("Event safely ignored because mediatype is unknown")
 			}

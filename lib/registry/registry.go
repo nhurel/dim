@@ -168,9 +168,9 @@ func (c *registryClient) WalkRepositories() <-chan Repository {
 	return WalkRepositories(c)
 }
 
-// WalkRepositories walks through all repositories and ssend them in the given channel
+// WalkRepositories walks through all repositories and send them in the given channel
 func WalkRepositories(c Client) <-chan Repository {
-	repositories := make(chan Repository)
+	repositories := make(chan Repository, 5)
 
 	go func() {
 		var err error
