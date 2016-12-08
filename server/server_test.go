@@ -316,7 +316,7 @@ func TestVersion(t *testing.T) {
 			t.Errorf("/dim/version returned %s instead of %s", got.Version, scenario.expected.Version)
 		}
 		if scenario.expected.Uptime == "" && got.Uptime != "" {
-			t.Errorf("/dim/version return an unexpected uptime. Got %s - Expected %d", got.Uptime, scenario.expected.Uptime)
+			t.Errorf("/dim/version return an unexpected uptime. Got %s - Expected %s", got.Uptime, scenario.expected.Uptime)
 		}
 		if scenario.expected.Uptime != "" {
 			if _, err := time.ParseDuration(got.Uptime); err != nil {
