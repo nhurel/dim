@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"context"
@@ -188,61 +187,18 @@ func buildResults(sr *bleve.SearchResult) []types.SearchResult {
 
 func documentToSearchResult(h *search.DocumentMatch) types.SearchResult {
 	logrus.WithField("hit", h).Debugln("Entering documentToSearchResult")
+	img := index.DocumentToImage(h)
 	result := types.SearchResult{
-		Name:        h.Fields["Name"].(string),
-		Description: h.Fields["Tag"].(string),
-		Tag:         h.Fields["Tag"].(string),
-		FullName:    h.Fields["FullName"].(string),
-	}
-
-	if h.Fields["Created"] != nil {
-		if t, err := time.Parse(time.RFC3339, h.Fields["Created"].(string)); err == nil {
-			result.Created = t
-		} else {
-			logrus.WithError(err).WithField("time", h.Fields["Created"].(string)).Errorln("Failed to parse time")
-		}
-	}
-
-	labels := make(map[string]string, 10)
-	envs := make(map[string]string, 10)
-	for k, v := range h.Fields {
-		if strings.HasPrefix(k, "Label.") {
-			labels[strings.TrimPrefix(k, "Label.")] = v.(string)
-		} else if strings.HasPrefix(k, "Env.") {
-			envs[strings.TrimPrefix(k, "Env.")] = v.(string)
-		}
-	}
-
-	if len(labels) > 0 {
-		result.Label = labels
-	}
-	if h.Fields["Volumes"] != nil {
-		switch vol := h.Fields["Volumes"].(type) {
-		case string:
-			result.Volumes = []string{vol}
-		case []interface{}:
-			result.Volumes = make([]string, len(vol))
-			for i, volume := range vol {
-				result.Volumes[i] = volume.(string)
-			}
-		}
-	}
-	if h.Fields["ExposedPorts"] != nil {
-		switch ports := h.Fields["ExposedPorts"].(type) {
-		case float64:
-			result.ExposedPorts = []int{int(ports)}
-		case []interface{}:
-			result.ExposedPorts = make([]int, len(ports))
-			for i, port := range ports {
-				result.ExposedPorts[i] = int(port.(float64))
-			}
-		}
-	}
-	if len(envs) > 0 {
-		result.Env = envs
-	}
-	if h.Fields["Size"] != nil {
-		result.Size = int64(h.Fields["Size"].(float64))
+		Name:         img.Name,
+		Description:  img.Tag,
+		Tag:          img.Tag,
+		FullName:     img.FullName,
+		Created:      img.Created,
+		Label:        img.Label,
+		Volumes:      img.Volumes,
+		ExposedPorts: img.ExposedPorts,
+		Env:          img.Env,
+		Size:         img.Size,
 	}
 
 	return result

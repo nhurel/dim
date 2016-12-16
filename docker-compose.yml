@@ -34,6 +34,8 @@ services:
   networks:
     - registry
   command: server -l info
+  volumes:
+    - ./integration/dim-server.yml:/dim.yml
  apache:
    container_name: apache
    restart: always

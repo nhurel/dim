@@ -22,12 +22,16 @@ import (
 
 	"context"
 
+	"bytes"
+	"net/http"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/server"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func newServerCommand(c *cli.Cli, rootCommand *cobra.Command, ctx context.Context) {
@@ -62,8 +66,20 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 		authConfig = &types.AuthConfig{Username: username, Password: password}
 	}
 
-	idx, err := index.New(realDir, registryURL, c, authConfig)
-	if err != nil {
+	var idx *index.Index
+	cfg := &index.Config{Directory: realDir}
+	var err error
+
+	hooks := make([]*index.Hook, 0, 10)
+	if err = viper.UnmarshalKey("index.hooks", &hooks); err != nil {
+		return err
+	}
+	cfg.Hooks = hooks
+	for n, f := range hookFunctions {
+		cfg.RegisterFunction(n, f)
+	}
+
+	if idx, err = index.New(cfg, registryURL, c, authConfig); err != nil {
 		return err
 	}
 
@@ -98,4 +114,29 @@ func handleSignal() {
 			os.Exit(0)
 		}
 	}()
+}
+
+var hookFunctions = map[string]interface{}{
+	"info": func(args ...interface{}) bool {
+		logrus.Infoln(args)
+		return true
+	},
+	"warn": func(args ...interface{}) bool {
+		logrus.Warnln(args)
+		return true
+	},
+	"error": func(args ...interface{}) bool {
+		logrus.Errorln(args)
+		return true
+	},
+	"sendRequest": func(method, url, payload string) error {
+
+		r, _ := http.NewRequest(method, url, bytes.NewBufferString(payload))
+		resp, err := http.DefaultClient.Do(r)
+		if err != nil {
+			return err
+		}
+		logrus.WithFields(logrus.Fields{"url": url, "payload": payload, "method": method}).Infoln(resp.Status)
+		return nil
+	},
 }

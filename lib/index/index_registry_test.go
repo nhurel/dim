@@ -11,13 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package index_test
+package index
 
 import (
 	"fmt"
 	"io"
 	"testing"
 	"text/template"
+
+	"sync"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
@@ -29,7 +31,6 @@ import (
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types/container"
-	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/lib/index/indextest"
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/types"
@@ -37,7 +38,7 @@ import (
 )
 
 type RegistrySuite struct {
-	index *index.Index
+	index *Index
 }
 
 type NoOpRegistryClient struct {
@@ -95,7 +96,16 @@ func (r *NoOpRegistryRepository) Image(tag string) (img *registry.Image, err err
 	return
 }
 func (r *NoOpRegistryRepository) ImageFromManifest(tagDigest digest.Digest, digest string) (img *registry.Image, err error) {
-	return repoImages["mysql:5.7"], nil
+	if digest == "5.7" {
+		img = repoImages["mysql:5.7"]
+	} else if digest == "3.2" {
+		img = repoImages["mongo:3.2"]
+	}
+	err = nil
+	if img == nil {
+		err = fmt.Errorf("Image %s not found", digest)
+	}
+	return
 }
 func (r *NoOpRegistryRepository) DeleteImage(tag string) error {
 	return nil
@@ -154,6 +164,23 @@ var repoImages = map[string]*registry.Image{
 		Tag:    "5.7",
 		Digest: "mysql:5.7",
 	},
+	"mongo:3.2": {
+		Image: &image.Image{
+			V1Image: image.V1Image{
+				Config: &container.Config{
+					Labels: map[string]string{
+						"type":   "database",
+						"family": "mongodb",
+					},
+					Env: []string{
+						"MONGODB_VERSION=3.2",
+					},
+				},
+			},
+		},
+		Tag:    "3.2",
+		Digest: "mongo:3.2",
+	},
 }
 
 // Hook up gocheck into the "go test" runner.
@@ -166,16 +193,15 @@ func (s *RegistrySuite) SetUpTest(c *C) {
 	logrus.SetLevel(logrus.DebugLevel)
 	var i bleve.Index
 	var err error
-	if i, err = indextest.MockIndex(); err != nil {
+	if i, err = indextest.MockIndex(ImageMapping); err != nil {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
 	}
-	s.index = &index.Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: &NoOpRegistryClient{}}
-
+	s.index = &Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: &NoOpRegistryClient{}, Config: &Config{}}
 }
 
 func (s *RegistrySuite) TearDownSuite(c *C) {
-	//gock.Off()
+	s.index.Index.Close()
 }
 
 func (s *RegistrySuite) TestBuild(c *C) {
@@ -199,11 +225,43 @@ func (s *RegistrySuite) TestSearchImages(c *C) {
 }
 
 func (s *RegistrySuite) TestGetImageAndIndex(c *C) {
-	s.index.GetImageAndIndex("mysql", "5.7", digest.FromBytes([]byte("digest")))
+	img, err := s.index.GetImage("mysql", "5.7", digest.FromBytes([]byte("digest")))
+	c.Assert(err, IsNil)
+	s.index.IndexImage(img)
 	sr, err := s.index.SearchImages("", "+Name:mysql +Tag:5.7", []string{"Name", "Tag", "FullName", "Labels", "Envs"}, 0, 5)
 	c.Assert(err, IsNil)
 	c.Assert(sr.Total, Equals, uint64(1))
 	c.Assert(sr.Hits[0].Fields["Label.family"], Equals, "mysql")
 	c.Assert(sr.Hits[0].Fields["Label.type"], Equals, "database")
 	c.Assert(sr.Hits[0].Fields["Env.MYSQL_VERSION"], Equals, "5.7")
+}
+
+func (s *RegistrySuite) TestHandleNotifications(c *C) {
+	logrus.Infoln("TestHandleNotifications")
+	s.index.Config.Hooks = []*Hook{{Event: PushAction, Action: "{{testCalls}}"}, {Event: DeleteAction, Action: "{{testCalls}}"}}
+	s.index.RegClient = &NoOpRegistryClient{}
+	s.index.notifications = make(chan *NotificationJob)
+	defer close(s.index.notifications)
+	calls := make(map[string]int)
+	wg := sync.WaitGroup{}
+	s.index.Config.RegisterFunction("testCalls", func() error {
+		defer wg.Done()
+		calls["testCalls"]++
+		return nil
+	})
+
+	if err := s.index.Config.ParseHooks(); err != nil {
+		c.Fatalf("ParseHooks returned an error : %v", err)
+	}
+
+	wg.Add(2)
+
+	go func() { s.index.handleNotifications() }()
+	s.index.notifications <- &NotificationJob{Action: PushAction, Tag: "3.2", Repository: "mongo"}
+	s.index.notifications <- &NotificationJob{Action: DeleteAction, Digest: "mongo:3.2"}
+	wg.Wait()
+
+	if calls["testCalls"] != 2 {
+		c.Errorf("handleNotifications should have beend called twice but was called %d times", calls["testCalls"])
+	}
 }

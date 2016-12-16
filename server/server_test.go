@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package server_test
+package server
 
 import (
 	"testing"
@@ -39,7 +39,6 @@ import (
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/lib/index/indextest"
 	"github.com/nhurel/dim/lib/utils"
-	"github.com/nhurel/dim/server"
 	"github.com/nhurel/dim/types"
 )
 
@@ -118,7 +117,7 @@ func TestSearch(t *testing.T) {
 
 	var i bleve.Index
 	var err error
-	if i, err = indextest.MockIndex(); err != nil {
+	if i, err = indextest.MockIndex(index.ImageMapping); err != nil {
 		t.Fatalf("Failed to create index : %v", err)
 	}
 
@@ -134,7 +133,7 @@ func TestSearch(t *testing.T) {
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/search?a=Name:%s&f=Volumes&f=Env&f=Label&f=ExposedPorts&f=Created", image.Name), nil)
 
-		server.Search(ind, response, request)
+		Search(ind, response, request)
 
 		if response.Result().StatusCode != http.StatusOK {
 			t.Fatalf("Expected status code 200 : %s", response.Result().Status)
@@ -182,7 +181,7 @@ func TestSearch(t *testing.T) {
 
 	request := httptest.NewRequest(http.MethodGet, "/v1/search?f=Name", nil)
 	response := httptest.NewRecorder()
-	server.Search(ind, response, request)
+	Search(ind, response, request)
 	if response.Result().StatusCode != http.StatusBadRequest {
 		t.Errorf("Search returned status %s instead of %d when called with no search param", response.Result().Status, http.StatusBadRequest)
 	}
@@ -196,9 +195,9 @@ func (i *NoOpRegistryIndex) Build() <-chan bool {
 	i.calls["Build"] = nil
 	return nil
 }
-func (i *NoOpRegistryIndex) GetImageAndIndex(repository, tag string, dg digest.Digest) error {
+func (i *NoOpRegistryIndex) GetImage(repository, tag string, dg digest.Digest) (*index.Image, error) {
 	i.calls["GetImageAndIndex"] = []interface{}{repository, tag, dg}
-	return nil
+	return nil, nil
 }
 func (i *NoOpRegistryIndex) IndexImage(image *index.Image) {
 	i.calls["IndexImage"] = []interface{}{image}
@@ -213,6 +212,11 @@ func (i *NoOpRegistryIndex) SearchImages(q, a string, fields []string, offset, m
 
 func (i *NoOpRegistryIndex) Submit(job *index.NotificationJob) {
 	i.calls["Submit"] = []interface{}{job}
+}
+
+func (i *NoOpRegistryIndex) FindImage(id string) (*index.Image, error) {
+	i.calls["FindImage"] = []interface{}{id}
+	return nil, nil
 }
 
 func TestNotifyImageChange(t *testing.T) {
@@ -234,7 +238,7 @@ func TestNotifyImageChange(t *testing.T) {
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBuffer(deleteEventMessage))
 
-	server.NotifyImageChange(ind, response, request)
+	NotifyImageChange(ind, response, request)
 
 	if ind.calls["Submit"] == nil || ind.calls["Submit"][0].(*index.NotificationJob).Action != index.DeleteAction {
 		t.Errorf("NotifyImageChange(deleteEvent) did not submit a job with action %s. Called with %v", index.DeleteAction, ind.calls["Submit"][0])
@@ -261,7 +265,7 @@ func TestNotifyImageChange(t *testing.T) {
 	response = httptest.NewRecorder()
 	request = httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBuffer(pushEventMessage))
 
-	server.NotifyImageChange(ind, response, request)
+	NotifyImageChange(ind, response, request)
 
 	if ind.calls["Submit"] == nil {
 		t.Errorf("NotifyImageChange(pushEvent) did not call index.GetImageAndIndex %v", ind.calls)
@@ -279,7 +283,7 @@ func TestNotifyImageChange(t *testing.T) {
 	response = httptest.NewRecorder()
 	request = httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBufferString(badMessage))
 
-	server.NotifyImageChange(ind, response, request)
+	NotifyImageChange(ind, response, request)
 	if response.Result().StatusCode != http.StatusBadRequest {
 		t.Errorf("NotifyImaeChange(badRequest) returned status %s instead of %d", response.Result().Status, http.StatusBadRequest)
 	}
@@ -307,7 +311,7 @@ func TestVersion(t *testing.T) {
 	}
 	for _, scenario := range scenarii {
 		w := httptest.NewRecorder()
-		server.Version(scenario.given, w, nil)
+		Version(scenario.given, w, nil)
 
 		got := &types.Info{}
 		b, err := ioutil.ReadAll(w.Result().Body)

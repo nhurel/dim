@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package index_test
+package index
 
 import (
 	"testing"
@@ -20,13 +20,12 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
-	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/lib/index/indextest"
 	. "gopkg.in/check.v1"
 )
 
 type TestSuite struct {
-	index *index.Index
+	index *Index
 }
 
 // Hook up gocheck into the "go test" runner.
@@ -35,7 +34,7 @@ func Test(t *testing.T) { TestingT(t) }
 var _ = Suite(&TestSuite{})
 
 var (
-	images = []index.Image{
+	images = []Image{
 		{
 			ID:       "123456",
 			Name:     "centos",
@@ -118,13 +117,12 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	logrus.SetLevel(logrus.InfoLevel)
 	var i bleve.Index
 	var err error
-	if i, err = indextest.MockIndex(); err != nil {
+	if i, err = indextest.MockIndex(ImageMapping); err != nil {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
 	}
 
-	s.index = &index.Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: nil}
-
+	s.index = &Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: nil, Config: &Config{}}
 }
 
 func (s *TestSuite) SetUpTest(c *C) {
@@ -133,6 +131,10 @@ func (s *TestSuite) SetUpTest(c *C) {
 			logrus.WithError(err).Errorln("Failed to index image")
 		}
 	}
+}
+
+func (s *TestSuite) TearDownSuite(c *C) {
+	s.index.Index.Close()
 }
 
 func (s *TestSuite) TestNameTagSearch(c *C) {
@@ -156,7 +158,7 @@ func (s *TestSuite) TestNameTagSearch(c *C) {
 
 	for _, t := range tests {
 		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(index.BuildQuery(t.query, ""))
+		request := bleve.NewSearchRequest(BuildQuery(t.query, ""))
 		request.Fields = []string{"Name", "Tag"}
 		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)
@@ -196,7 +198,7 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 
 	for _, t := range tests {
 		c.Logf("Test with query %s", t)
-		request := bleve.NewSearchRequest(index.BuildQuery("", t.query))
+		request := bleve.NewSearchRequest(BuildQuery("", t.query))
 		request.Fields = []string{"Name", "Tag"}
 		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)
@@ -210,7 +212,7 @@ func (s *TestSuite) TestAdvancedSearch(c *C) {
 }
 
 func (s *TestSuite) TestSearchResults(c *C) {
-	request := bleve.NewSearchRequest(index.BuildQuery("mysql", ""))
+	request := bleve.NewSearchRequest(BuildQuery("mysql", ""))
 	request.Fields = []string{"Name", "Tag", "ExposedPorts", "Volumes", "Labels", "Envs"}
 	results, err := s.index.Search(request)
 	c.Assert(err, IsNil)
@@ -226,9 +228,8 @@ func (s *TestSuite) TestSearchResults(c *C) {
 }
 
 func (s *TestSuite) TestDeleteImage(c *C) {
-
 	for _, image := range images {
-		request := bleve.NewSearchRequest(index.BuildQuery("", fmt.Sprintf("+Name:%s +Tag:%s", image.Name, image.Tag)))
+		request := bleve.NewSearchRequest(BuildQuery("", fmt.Sprintf("+Name:%s +Tag:%s", image.Name, image.Tag)))
 		request.Fields = []string{"Name", "Tag"}
 		results, err := s.index.Search(request)
 		c.Assert(err, IsNil)

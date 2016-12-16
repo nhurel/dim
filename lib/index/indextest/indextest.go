@@ -18,7 +18,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
-	"github.com/nhurel/dim/lib/index"
 )
 
 // ParseTime converts a given string into time
@@ -31,11 +30,9 @@ func ParseTime(value string) time.Time {
 }
 
 // MockIndex creates a bleve Index for tests
-func MockIndex() (bleve.Index, error) {
-	logrus.SetLevel(logrus.InfoLevel)
-
+func MockIndex(dm *bleve.DocumentMapping) (bleve.Index, error) {
 	mapping := bleve.NewIndexMapping()
-	mapping.AddDocumentMapping("image", index.ImageMapping)
+	mapping.AddDocumentMapping("image", dm)
 	mapping.DefaultField = "_all"
 	return bleve.NewMemOnly(mapping)
 }
