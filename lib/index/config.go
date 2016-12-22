@@ -18,7 +18,7 @@ import (
 	"io/ioutil"
 	"text/template"
 
-	"github.com/opencontainers/runc/Godeps/_workspace/src/github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 )
 
 // Config holds index configuration
