@@ -444,18 +444,6 @@
 			"revisionTime": "2016-07-02T09:32:40Z"
 		},
 		{
-			"checksumSHA1": "RYsnd/CEaMmiNaDTCZbGgD88Izo=",
-			"path": "github.com/docker/docker/api/client",
-			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
-			"revisionTime": "2016-07-02T09:32:40Z"
-		},
-		{
-			"checksumSHA1": "R4BiVw8SNGZCG3HQFZvu/Wt8BnE=",
-			"path": "github.com/docker/docker/api/client/inspect",
-			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
-			"revisionTime": "2016-07-02T09:32:40Z"
-		},
-		{
 			"checksumSHA1": "J8QOke6LU2BWo7cUhy7p3GYEO5k=",
 			"path": "github.com/docker/docker/api/server/httputils",
 			"revision": "534753663161334baba06f13b8efa4cad22b5bc5",
