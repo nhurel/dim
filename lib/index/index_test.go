@@ -20,6 +20,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/index/indextest"
 	. "gopkg.in/check.v1"
 )
@@ -34,7 +35,7 @@ func Test(t *testing.T) { TestingT(t) }
 var _ = Suite(&TestSuite{})
 
 var (
-	images = []Image{
+	images = []dim.IndexImage{
 		{
 			ID:       "123456",
 			Name:     "centos",
@@ -122,7 +123,7 @@ func (s *TestSuite) SetUpSuite(c *C) {
 		return
 	}
 
-	s.index = &Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: nil, Config: &Config{}}
+	s.index = &Index{Index: i, RegClient: nil, Config: &Config{}}
 }
 
 func (s *TestSuite) SetUpTest(c *C) {

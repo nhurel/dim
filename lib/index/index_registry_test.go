@@ -14,112 +14,33 @@
 package index
 
 import (
+	"testing"
+
 	"fmt"
 	"io"
-	"testing"
-	"text/template"
 
 	"sync"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
-	"github.com/docker/distribution"
-	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
-	ref "github.com/docker/distribution/reference"
-	"github.com/docker/distribution/registry/client"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/image"
-	"github.com/docker/docker/reference"
+	dockerReference "github.com/docker/docker/reference"
 	"github.com/docker/engine-api/types/container"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/index/indextest"
+	"github.com/nhurel/dim/lib/mock"
 	"github.com/nhurel/dim/lib/registry"
-	"github.com/nhurel/dim/types"
 	. "gopkg.in/check.v1"
 )
 
 type RegistrySuite struct {
-	index *Index
+	index              *Index
+	mockRegistryClient *mock.NoOpRegistryClient
 }
 
-type NoOpRegistryClient struct {
-	client.Registry
-}
-
-func (r *NoOpRegistryClient) Repositories(ctx context.Context, repos []string, last string) (int, error) {
-	repos[0] = "httpd"
-	repos[1] = "mysql"
-	return 2, io.EOF
-}
-
-func (r *NoOpRegistryClient) NewRepository(parsedName reference.Named) (registry.Repository, error) {
-	return &NoOpRegistryRepository{name: parsedName.Name()}, nil
-}
-func (r *NoOpRegistryClient) Search(query, advanced string, offset, numResults int) (*types.SearchResults, error) {
-	return nil, nil
-}
-
-func (r *NoOpRegistryClient) WalkRepositories() <-chan registry.Repository {
-	return registry.WalkRepositories(r)
-}
-
-func (r *NoOpRegistryClient) PrintImageInfo(w io.Writer, parsedName reference.Named, tpl *template.Template) error {
-	return nil
-}
-
-func (r *NoOpRegistryClient) DeleteImage(parsedName reference.Named) error {
-	return nil
-}
-
-func (r *NoOpRegistryClient) ServerVersion() (*types.Info, error) {
-	return nil, nil
-}
-
-type NoOpRegistryRepository struct {
-	distribution.Repository
-	name string
-}
-
-func (r *NoOpRegistryRepository) AllTags() ([]string, error) {
-	switch r.name {
-	case "httpd":
-		return []string{"2.2", "2.4"}, nil
-	case "mysql":
-		return []string{"5.5", "5.7"}, nil
-	default:
-		return []string{}, nil
-	}
-}
-func (r *NoOpRegistryRepository) Image(tag string) (img *registry.Image, err error) {
-	dg := fmt.Sprintf("%s:%s", r.name, tag)
-	img = repoImages[dg]
-	err = nil
-	return
-}
-func (r *NoOpRegistryRepository) ImageFromManifest(tagDigest digest.Digest, digest string) (img *registry.Image, err error) {
-	if digest == "5.7" {
-		img = repoImages["mysql:5.7"]
-	} else if digest == "3.2" {
-		img = repoImages["mongo:3.2"]
-	}
-	err = nil
-	if img == nil {
-		err = fmt.Errorf("Image %s not found", digest)
-	}
-	return
-}
-func (r *NoOpRegistryRepository) DeleteImage(tag string) error {
-	return nil
-}
-
-func (r *NoOpRegistryRepository) WalkImages() <-chan *registry.Image {
-	return registry.WalkImages(r)
-}
-func (r *NoOpRegistryRepository) Named() ref.Named {
-	n, _ := ref.ParseNamed(r.name)
-	return n
-}
-
-var repoImages = map[string]*registry.Image{
+var repoImages = map[string]*dim.RegistryImage{
 	"httpd:2.2": {
 		Image: &image.Image{
 			V1Image: image.V1Image{
@@ -197,7 +118,74 @@ func (s *RegistrySuite) SetUpTest(c *C) {
 		logrus.WithError(err).Errorln("Failed to create index")
 		return
 	}
-	s.index = &Index{Index: i, RegistryURL: "", RegistryAuth: nil, RegClient: &NoOpRegistryClient{}, Config: &Config{}}
+
+	mockRegistryClient := &mock.NoOpRegistryClient{}
+	mockRegistryClient.RepositoriesFn = func(repos []string, last string) (int, error) {
+		repos[0] = "httpd"
+		repos[1] = "mysql"
+		return 2, io.EOF
+	}
+	mockRegistryClient.WalkRepoitoriesFn = func() <-chan dim.Repository {
+		return registry.WalkRepositories(mockRegistryClient)
+	}
+
+	mockRegistryRepository := map[string]*mock.NoOpRegistryRepository{
+		"httpd": {
+			ImageFn: func(tag string) (*dim.RegistryImage, error) {
+				dg := fmt.Sprintf("httpd:%s", tag)
+				return repoImages[dg], nil
+			},
+			ImageFromManifestFn: func(tagDigest digest.Digest, digest string) (img *dim.RegistryImage, err error) {
+				if digest == "5.7" {
+					img = repoImages["mysql:5.7"]
+				}
+				err = nil
+				if img == nil {
+					err = fmt.Errorf("Image %s not found", digest)
+				}
+				return
+			},
+			NamedFn: func() reference.Named {
+				n, _ := reference.ParseNamed("httpd")
+				return n
+			},
+			AllTagsFn: func() ([]string, error) {
+				return []string{"2.2", "2.4"}, nil
+			},
+		},
+		"mysql": {
+			ImageFn: func(tag string) (*dim.RegistryImage, error) {
+				dg := fmt.Sprintf("mysql:%s", tag)
+				return repoImages[dg], nil
+			},
+			ImageFromManifestFn: func(tagDigest digest.Digest, digest string) (img *dim.RegistryImage, err error) {
+				if digest == "5.7" {
+					img = repoImages["mysql:5.7"]
+				}
+				err = nil
+				if img == nil {
+					err = fmt.Errorf("Image %s not found", digest)
+				}
+				return
+			},
+			NamedFn: func() reference.Named {
+				n, _ := reference.ParseNamed("mysql")
+				return n
+			},
+			AllTagsFn: func() ([]string, error) {
+				return []string{"5.5", "5.7"}, nil
+			},
+		},
+	}
+
+	mockRegistryRepository["httpd"].WalkImagesFn = func() <-chan *dim.RegistryImage { return registry.WalkImages(mockRegistryRepository["httpd"]) }
+	mockRegistryRepository["mysql"].WalkImagesFn = func() <-chan *dim.RegistryImage { return registry.WalkImages(mockRegistryRepository["mysql"]) }
+
+	mockRegistryClient.NewRepositoryFn = func(parsedName dockerReference.Named) (dim.Repository, error) {
+		return mockRegistryRepository[parsedName.Name()], nil
+	}
+
+	s.index = &Index{Index: i, RegClient: mockRegistryClient, Config: &Config{}}
 }
 
 func (s *RegistrySuite) TearDownSuite(c *C) {
@@ -219,9 +207,9 @@ func (s *RegistrySuite) TestSearchImages(c *C) {
 	sr, err := s.index.SearchImages("", "+Name:mysql +Tag:5.7", []string{"Name", "Tag", "FullName", "Labels", "Envs"}, 0, 5)
 	c.Assert(err, IsNil)
 	c.Assert(sr.Total, Equals, uint64(1))
-	c.Assert(sr.Hits[0].Fields["Label.family"], Equals, "mysql")
-	c.Assert(sr.Hits[0].Fields["Label.type"], Equals, "database")
-	c.Assert(sr.Hits[0].Fields["Env.MYSQL_VERSION"], Equals, "5.7")
+	c.Assert(sr.Images[0].Label["family"], Equals, "mysql")
+	c.Assert(sr.Images[0].Label["type"], Equals, "database")
+	c.Assert(sr.Images[0].Env["MYSQL_VERSION"], Equals, "5.7")
 }
 
 func (s *RegistrySuite) TestGetImageAndIndex(c *C) {
@@ -231,16 +219,35 @@ func (s *RegistrySuite) TestGetImageAndIndex(c *C) {
 	sr, err := s.index.SearchImages("", "+Name:mysql +Tag:5.7", []string{"Name", "Tag", "FullName", "Labels", "Envs"}, 0, 5)
 	c.Assert(err, IsNil)
 	c.Assert(sr.Total, Equals, uint64(1))
-	c.Assert(sr.Hits[0].Fields["Label.family"], Equals, "mysql")
-	c.Assert(sr.Hits[0].Fields["Label.type"], Equals, "database")
-	c.Assert(sr.Hits[0].Fields["Env.MYSQL_VERSION"], Equals, "5.7")
+	c.Assert(sr.Images[0].Label["family"], Equals, "mysql")
+	c.Assert(sr.Images[0].Label["type"], Equals, "database")
+	c.Assert(sr.Images[0].Env["MYSQL_VERSION"], Equals, "5.7")
 }
 
 func (s *RegistrySuite) TestHandleNotifications(c *C) {
 	logrus.Infoln("TestHandleNotifications")
-	s.index.Config.Hooks = []*Hook{{Event: PushAction, Action: "{{testCalls}}"}, {Event: DeleteAction, Action: "{{testCalls}}"}}
-	s.index.RegClient = &NoOpRegistryClient{}
-	s.index.notifications = make(chan *NotificationJob)
+	s.index.Config.Hooks = []*Hook{{Event: dim.PushAction, Action: "{{testCalls}}"}, {Event: dim.DeleteAction, Action: "{{testCalls}}"}}
+	s.index.RegClient = &mock.NoOpRegistryClient{
+		NewRepositoryFn: func(parsedName dockerReference.Named) (dim.Repository, error) {
+			return &mock.NoOpRegistryRepository{
+				ImageFn: func(tag string) (*dim.RegistryImage, error) {
+					dg := fmt.Sprintf("mongo:%s", tag)
+					return repoImages[dg], nil
+				},
+				ImageFromManifestFn: func(tagDigest digest.Digest, digest string) (img *dim.RegistryImage, err error) {
+					return repoImages["mongo:3.2"], nil
+				},
+				NamedFn: func() reference.Named {
+					n, _ := reference.ParseNamed("mongo")
+					return n
+				},
+				AllTagsFn: func() ([]string, error) {
+					return []string{"3.2"}, nil
+				},
+			}, nil
+		},
+	}
+	s.index.notifications = make(chan *dim.NotificationJob)
 	defer close(s.index.notifications)
 	calls := make(map[string]int)
 	wg := sync.WaitGroup{}
@@ -257,8 +264,8 @@ func (s *RegistrySuite) TestHandleNotifications(c *C) {
 	wg.Add(2)
 
 	go func() { s.index.handleNotifications() }()
-	s.index.notifications <- &NotificationJob{Action: PushAction, Tag: "3.2", Repository: "mongo"}
-	s.index.notifications <- &NotificationJob{Action: DeleteAction, Digest: "mongo:3.2"}
+	s.index.notifications <- &dim.NotificationJob{Action: dim.PushAction, Tag: "3.2", Repository: "mongo"}
+	s.index.notifications <- &dim.NotificationJob{Action: dim.DeleteAction, Digest: "mongo:3.2"}
 	wg.Wait()
 
 	if calls["testCalls"] != 2 {

@@ -20,7 +20,7 @@ import (
 	"github.com/docker/docker/image"
 	"github.com/docker/engine-api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/nhurel/dim/lib/registry"
+	"github.com/nhurel/dim/lib"
 	. "gopkg.in/check.v1"
 )
 
@@ -32,7 +32,8 @@ func TestImage(t *testing.T) { TestingT(t) }
 
 var _ = Suite(&ImageTestSuite{})
 
-var img = &registry.Image{
+var img = &dim.RegistryImage{
+
 	Image: &image.Image{
 		V1Image: image.V1Image{
 			ID:      "imageID",

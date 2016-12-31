@@ -25,60 +25,27 @@ import (
 	"github.com/blevesearch/bleve/search"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/docker/reference"
-	"github.com/docker/engine-api/types"
-	"github.com/nhurel/dim/cli"
-	"github.com/nhurel/dim/lib/registry"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/utils"
 )
-
-// RegistryIndex defines method to manage the indexation of a docker registry
-type RegistryIndex interface {
-	Build() <-chan bool
-	GetImage(repository, tag string, dg digest.Digest) (*Image, error)
-	IndexImage(image *Image)
-	DeleteImage(id string)
-	SearchImages(q, a string, fields []string, offset, maxResults int) (*bleve.SearchResult, error)
-	Submit(job *NotificationJob)
-	FindImage(id string) (*Image, error)
-}
 
 // Index manages indexation of docker images
 type Index struct {
 	// Index is the bleve.Index instance
 	bleve.Index
 	Config        *Config
-	RegistryURL   string
-	RegistryAuth  *types.AuthConfig
-	RegClient     registry.Client
-	notifications chan *NotificationJob
-}
-
-// ActionType indicates the kind of a NotificationJob
-type ActionType string
-
-// DeleteAction indicates a NotificationJob should delete an image from the index
-const DeleteAction ActionType = "delete"
-
-// PushAction indicates a NotificationJob should add or update an image in the index
-const PushAction ActionType = "push"
-
-// NotificationJob stores info to reindex an image after a push or deletion
-type NotificationJob struct {
-	Action     ActionType
-	Repository string
-	Tag        string
-	Digest     digest.Digest
+	RegClient     dim.RegistryClient
+	notifications chan *dim.NotificationJob
 }
 
 type repoImage struct {
 	repoName string
-	image    *registry.Image
+	image    *dim.RegistryImage
 }
 
 // New create a new instance to manage a index of a given registry into a specific directory
-func New(cfg *Config, registryURL string, c *cli.Cli, registryAuth *types.AuthConfig) (*Index, error) {
+func New(cfg *Config, regClient dim.RegistryClient) (*Index, error) {
 	var i bleve.Index
-	var reg registry.Client
 	var err error
 
 	if err = cfg.ParseHooks(); err != nil {
@@ -91,12 +58,8 @@ func New(cfg *Config, registryURL string, c *cli.Cli, registryAuth *types.AuthCo
 		return nil, err
 	}
 
-	if reg, err = registry.New(c, registryAuth, registryURL); err != nil {
-		return nil, err
-	}
-
-	notifications := make(chan *NotificationJob, 3)
-	index := &Index{Index: i, RegistryURL: registryURL, RegistryAuth: registryAuth, RegClient: reg, notifications: notifications, Config: cfg}
+	notifications := make(chan *dim.NotificationJob, 3)
+	index := &Index{Index: i, RegClient: regClient, notifications: notifications, Config: cfg}
 	index.loop(3)
 	return index, nil
 }
@@ -114,7 +77,7 @@ func (idx *Index) Build() <-chan bool {
 		submitWg := sync.WaitGroup{}
 		for repository := range repositories {
 			submitWg.Add(1)
-			go func(repo registry.Repository) {
+			go func(repo dim.Repository) {
 				defer submitWg.Done()
 				for img := range repo.WalkImages() {
 					images <- &repoImage{repo.Named().Name(), img}
@@ -126,7 +89,7 @@ func (idx *Index) Build() <-chan bool {
 			doneWG := sync.WaitGroup{}
 			for img := range images {
 				doneWG.Add(1)
-				go func(n string, i *registry.Image) {
+				go func(n string, i *dim.RegistryImage) {
 					defer doneWG.Done()
 					logrus.WithField("reponame", n).Infoln("Indexing image")
 					idx.IndexImage(Parse(n, i))
@@ -143,16 +106,16 @@ func (idx *Index) Build() <-chan bool {
 }
 
 // GetImage returns the docker image ready to be indexed
-func (idx *Index) GetImage(repository, tag string, dg digest.Digest) (*Image, error) {
+func (idx *Index) GetImage(repository, tag string, dg digest.Digest) (*dim.IndexImage, error) {
 	named, _ := reference.ParseNamed(repository)
-	var repo registry.Repository
+	var repo dim.Repository
 	var err error
 	if repo, err = idx.RegClient.NewRepository(named); err != nil {
 		logrus.WithError(err).WithField("Repository", repository).Errorln("Failed get repository info")
 		return nil, err
 	}
 
-	var img *registry.Image
+	var img *dim.RegistryImage
 	if img, err = repo.ImageFromManifest(dg, tag); err != nil {
 		logrus.WithError(err).Errorln("Failed to get image info from manifest")
 		return nil, err
@@ -161,7 +124,7 @@ func (idx *Index) GetImage(repository, tag string, dg digest.Digest) (*Image, er
 }
 
 // IndexImage adds a given image into the index
-func (idx *Index) IndexImage(image *Image) {
+func (idx *Index) IndexImage(image *dim.IndexImage) {
 	logrus.WithFields(logrus.Fields{"imageID": image.ID, "image.FullName": image.FullName}).Debugln("Indexing image")
 	idx.Index.Index(image.FullName, image)
 }
@@ -225,7 +188,7 @@ func BuildQuery(nameTag, advanced string) bleve.Query {
 
 // SearchImages returns the images matching query.
 // If fields is not empty, it fetches all given fields as well
-func (idx *Index) SearchImages(q, a string, fields []string, offset, maxResults int) (*bleve.SearchResult, error) {
+func (idx *Index) SearchImages(q, a string, fields []string, offset, maxResults int) (*dim.IndexResults, error) {
 	var err error
 	var sr *bleve.SearchResult
 	request := bleve.NewSearchRequestOptions(BuildQuery(q, a), maxResults, offset, false)
@@ -233,7 +196,7 @@ func (idx *Index) SearchImages(q, a string, fields []string, offset, maxResults 
 	l := logrus.WithField("request", request).WithField("query", request.Query)
 	l.Debugln("Running search")
 	if sr, err = idx.Search(request); err != nil {
-		return sr, fmt.Errorf("Error occured when processing search : %v", err)
+		return nil, fmt.Errorf("Error occured when processing search : %v", err)
 	}
 
 	if fields != nil && len(fields) > 0 {
@@ -247,11 +210,23 @@ func (idx *Index) SearchImages(q, a string, fields []string, offset, maxResults 
 
 		for i, h := range sr.Hits {
 			if sr.Hits[i], err = idx.searchDetails(h, detailFields); err != nil {
-				return sr, fmt.Errorf("Error occured while searching details of an image : %x", err)
+				return nil, fmt.Errorf("Error occured while searching details of an image : %x", err)
 			}
 		}
 	}
-	return sr, nil
+
+	results := &dim.IndexResults{Total: sr.Total}
+	results.Images = buildResults(sr)
+
+	return results, nil
+}
+
+func buildResults(sr *bleve.SearchResult) []*dim.IndexImage {
+	images := make([]*dim.IndexImage, 0, sr.Total)
+	for _, h := range sr.Hits {
+		images = append(images, DocumentToImage(h))
+	}
+	return images
 }
 
 func (idx *Index) searchDetails(doc *search.DocumentMatch, fields []string) (*search.DocumentMatch, error) {
@@ -289,7 +264,7 @@ func (idx *Index) searchDetails(doc *search.DocumentMatch, fields []string) (*se
 }
 
 // FindImage returns the image from the index with the given id
-func (idx *Index) FindImage(id string) (*Image, error) {
+func (idx *Index) FindImage(id string) (*dim.IndexImage, error) {
 	l := logrus.WithField("id", id)
 	l.Debugln("Entering FindImage")
 	q := bleve.NewTermQuery(id).SetField("ID")
@@ -309,9 +284,9 @@ func (idx *Index) FindImage(id string) (*Image, error) {
 }
 
 // DocumentToImage reads all fields of the given DocumentMatch and returns an image
-func DocumentToImage(h *search.DocumentMatch) *Image {
+func DocumentToImage(h *search.DocumentMatch) *dim.IndexImage {
 	logrus.WithField("hit", h).Debugln("Entering documentToSearchResult")
-	result := &Image{
+	result := &dim.IndexImage{
 		Name:     h.Fields["Name"].(string),
 		Tag:      h.Fields["Tag"].(string),
 		FullName: h.Fields["FullName"].(string),
@@ -371,7 +346,7 @@ func DocumentToImage(h *search.DocumentMatch) *Image {
 }
 
 //Submit pushes a NotificationJob that will be applied to the index
-func (idx *Index) Submit(job *NotificationJob) {
+func (idx *Index) Submit(job *dim.NotificationJob) {
 	idx.notifications <- job
 }
 
@@ -387,7 +362,7 @@ func (idx *Index) handleNotifications() {
 
 		hooks := idx.Config.GetHooks(job.Action)
 		switch job.Action {
-		case DeleteAction:
+		case dim.DeleteAction:
 			if len(hooks) > 0 {
 				l.Debugln("Calling delete hooks")
 				if img, err := idx.FindImage(job.Digest.String()); err == nil {
@@ -399,7 +374,7 @@ func (idx *Index) handleNotifications() {
 				l.Debugln("No delete hook found")
 			}
 			idx.DeleteImage(job.Digest.String())
-		case PushAction:
+		case dim.PushAction:
 			if img, err := idx.GetImage(job.Repository, job.Tag, job.Digest); err == nil {
 				if len(hooks) > 0 {
 					l.Debugln("Calling delete hooks")
@@ -416,10 +391,10 @@ func (idx *Index) handleNotifications() {
 	}
 }
 
-func triggerHooks(hooks []*Hook, img *Image) {
+func triggerHooks(hooks []*Hook, img *dim.IndexImage) {
 	logrus.WithField("image", img).Debugln("Triggering hooks")
 	for _, hook := range hooks {
-		go func(h *Hook, i *Image) {
+		go func(h *Hook, i *dim.IndexImage) {
 			h.Eval(i)
 		}(hook, img)
 

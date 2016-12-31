@@ -16,7 +16,6 @@ package index
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/blevesearch/bleve"
@@ -24,38 +23,13 @@ import (
 	"github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
 	"github.com/blevesearch/bleve/analysis/analyzers/standard_analyzer"
 	"github.com/blevesearch/bleve/analysis/datetime_parsers/datetime_optional"
-	"github.com/nhurel/dim/lib/registry"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/utils"
 )
 
-// Image modeling for indexation
-type Image struct {
-	ID           string
-	Name         string
-	FullName     string
-	Tag          string
-	Comment      string
-	Created      time.Time
-	Author       string
-	Label        map[string]string
-	Labels       []string
-	Volumes      []string
-	ExposedPorts []int
-	Env          map[string]string
-	Envs         []string
-	Size         int64
-	//Config *container.Config
-
-}
-
-// Type implementation of bleve.Classifier interface
-func (im Image) Type() string {
-	return "image"
-}
-
 // Parse converts a docker image into an indexable image
-func Parse(name string, img *registry.Image) *Image {
-	parsed := &Image{
+func Parse(name string, img *dim.RegistryImage) *dim.IndexImage {
+	parsed := &dim.IndexImage{
 		ID:      img.Digest,
 		Name:    name,
 		Tag:     img.Tag,

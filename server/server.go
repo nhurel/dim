@@ -23,24 +23,21 @@ import (
 	"context"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/blevesearch/bleve"
-	"github.com/blevesearch/bleve/search"
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/notifications"
 	"github.com/mailgun/manners"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/environment"
-	"github.com/nhurel/dim/lib/index"
-	"github.com/nhurel/dim/types"
 )
 
 // Server type handle  indexation of a docker registry and serves the search endpoint
 type Server struct {
 	*manners.GracefulServer
-	index *index.Index
+	index dim.RegistryIndex
 }
 
 // NewServer creates a new Server instance to listen on given port and use given index
-func NewServer(port string, index *index.Index, ctx context.Context) *Server {
+func NewServer(port string, index dim.RegistryIndex, ctx context.Context) *Server {
 	c := environment.Set(ctx, environment.StartTimeKey, time.Now())
 	http.HandleFunc("/v1/search", handler(index, Search))
 	http.HandleFunc("/dim/notify", handler(index, NotifyImageChange))
@@ -58,7 +55,7 @@ func (s *Server) Run() error {
 }
 
 // Handler injects an index into an HandlerFunc
-func handler(i *index.Index, dhf DimHandlerFunc) http.HandlerFunc {
+func handler(i dim.RegistryIndex, dhf DimHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		dhf(i, w, r)
 	}
@@ -72,7 +69,7 @@ func buildVersionHandler(ctx context.Context) http.HandlerFunc {
 
 // Version return server info including info and uptime
 func Version(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	info := types.Info{}
+	info := dim.Info{}
 	v := environment.Get(ctx, environment.VersionKey)
 	if v != nil {
 		info.Version = v.(string)
@@ -90,7 +87,7 @@ func Version(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 }
 
 // NotifyImageChange handles docker registry events
-func NotifyImageChange(i index.RegistryIndex, w http.ResponseWriter, r *http.Request) {
+func NotifyImageChange(i dim.RegistryIndex, w http.ResponseWriter, r *http.Request) {
 
 	logrus.Debugln("Receiving event from registry")
 	defer r.Body.Close()
@@ -113,12 +110,12 @@ func NotifyImageChange(i index.RegistryIndex, w http.ResponseWriter, r *http.Req
 		switch event.Action {
 		case notifications.EventActionDelete:
 			logrus.WithField("enveloppe", enveloppe).Infoln("Processing delete event")
-			i.Submit(&index.NotificationJob{Action: index.DeleteAction, Digest: event.Target.Digest})
+			i.Submit(&dim.NotificationJob{Action: dim.DeleteAction, Digest: event.Target.Digest})
 		// i.DeleteImage(event.Target.Digest.String())
 		case notifications.EventActionPush:
 			if event.Target.MediaType == schema2.MediaTypeManifest {
 				logrus.WithField("enveloppe", enveloppe).Infoln("Processing push event")
-				i.Submit(&index.NotificationJob{Action: index.PushAction, Repository: event.Target.Repository, Tag: event.Target.Tag, Digest: event.Target.Digest})
+				i.Submit(&dim.NotificationJob{Action: dim.PushAction, Repository: event.Target.Repository, Tag: event.Target.Tag, Digest: event.Target.Digest})
 				//if err := i.GetImageAndIndex(event.Target.Repository, event.Target.Tag, event.Target.Digest); err != nil {
 				//	logrus.WithField("EventTarget", event.Target).WithError(err).Errorln("Failed to reindex image")
 				//}
@@ -132,7 +129,7 @@ func NotifyImageChange(i index.RegistryIndex, w http.ResponseWriter, r *http.Req
 }
 
 // Search handles docker search request
-func Search(i index.RegistryIndex, w http.ResponseWriter, r *http.Request) {
+func Search(i dim.RegistryIndex, w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	var b []byte
@@ -155,7 +152,7 @@ func Search(i index.RegistryIndex, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var sr *bleve.SearchResult
+	var sr *dim.IndexResults
 	l := logrus.WithFields(logrus.Fields{"query": q, "advanced_query": a, "fields": fields})
 	l.Debugln("Searching image")
 	if sr, err = i.SearchImages(q, a, fields, offset, maxResults); err != nil {
@@ -164,7 +161,7 @@ func Search(i index.RegistryIndex, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := types.SearchResults{NumResults: int(sr.Total), Query: q}
+	results := dim.SearchResults{NumResults: int(sr.Total), Query: q}
 	l.WithField("#results", results.NumResults).Debugln("Found results")
 
 	results.Results = buildResults(sr)
@@ -177,32 +174,31 @@ func Search(i index.RegistryIndex, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func buildResults(sr *bleve.SearchResult) []types.SearchResult {
-	images := make([]types.SearchResult, 0, sr.Total)
-	for _, h := range sr.Hits {
-		images = append(images, documentToSearchResult(h))
+func buildResults(sr *dim.IndexResults) []dim.SearchResult {
+	images := make([]dim.SearchResult, 0, sr.Total)
+	for _, i := range sr.Images {
+		images = append(images, imageToSearchResult(i))
 	}
 	return images
 }
 
-func documentToSearchResult(h *search.DocumentMatch) types.SearchResult {
-	logrus.WithField("hit", h).Debugln("Entering documentToSearchResult")
-	img := index.DocumentToImage(h)
-	result := types.SearchResult{
-		Name:         img.Name,
-		Description:  img.Tag,
-		Tag:          img.Tag,
-		FullName:     img.FullName,
-		Created:      img.Created,
-		Label:        img.Label,
-		Volumes:      img.Volumes,
-		ExposedPorts: img.ExposedPorts,
-		Env:          img.Env,
-		Size:         img.Size,
+func imageToSearchResult(i *dim.IndexImage) dim.SearchResult {
+	logrus.WithField("image", i).Debugln("Entering imageToSearchResult")
+	result := dim.SearchResult{
+		Name:         i.Name,
+		Description:  i.Tag,
+		Tag:          i.Tag,
+		FullName:     i.FullName,
+		Created:      i.Created,
+		Label:        i.Label,
+		Volumes:      i.Volumes,
+		ExposedPorts: i.ExposedPorts,
+		Env:          i.Env,
+		Size:         i.Size,
 	}
 
 	return result
 }
 
 // DimHandlerFunc injects index into a HandlerFunc function
-type DimHandlerFunc func(i index.RegistryIndex, w http.ResponseWriter, r *http.Request)
+type DimHandlerFunc func(i dim.RegistryIndex, w http.ResponseWriter, r *http.Request)

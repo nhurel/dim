@@ -20,37 +20,27 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema2"
-	"github.com/docker/docker/image"
+	"github.com/nhurel/dim/lib"
 )
 
-// Repository interface defines methods exposed by a registry repository
-type Repository interface {
+// Repository implements Repository interface
+type Repository struct {
 	distribution.Repository
-	AllTags() ([]string, error)
-	Image(tag string) (img *Image, err error)
-	ImageFromManifest(tagDigest digest.Digest, tag string) (img *Image, err error)
-	DeleteImage(tag string) error
-	WalkImages() <-chan *Image
-}
-
-// RegistryRepository implements Repository interface
-type registryRepository struct {
-	distribution.Repository
-	client Client
+	client dim.RegistryClient
 	mfs    distribution.ManifestService
 	bfs    distribution.BlobService
 }
 
 // AllTags returns all existing tag for this repository instance
-func (r *registryRepository) AllTags() ([]string, error) {
+func (r *Repository) AllTags() ([]string, error) {
 	return r.tagService().All(ctx)
 }
 
-func (r *registryRepository) tagService() distribution.TagService {
+func (r *Repository) tagService() distribution.TagService {
 	return r.Repository.Tags(ctx)
 }
 
-func (r *registryRepository) manifestService() (distribution.ManifestService, error) {
+func (r *Repository) manifestService() (distribution.ManifestService, error) {
 	if r.mfs == nil {
 		var mService distribution.ManifestService
 		var err error
@@ -64,7 +54,7 @@ func (r *registryRepository) manifestService() (distribution.ManifestService, er
 	return r.mfs, nil
 }
 
-func (r *registryRepository) blobService() distribution.BlobService {
+func (r *Repository) blobService() distribution.BlobService {
 	if r.bfs == nil {
 		r.bfs = r.Blobs(ctx)
 	}
@@ -72,7 +62,7 @@ func (r *registryRepository) blobService() distribution.BlobService {
 }
 
 // Image return image info for a given tag
-func (r *registryRepository) Image(tag string) (img *Image, err error) {
+func (r *Repository) Image(tag string) (img *dim.RegistryImage, err error) {
 
 	var tagDigest digest.Digest
 	if tagDigest, err = r.getTagDigest(tag); err != nil {
@@ -86,7 +76,7 @@ func (r *registryRepository) Image(tag string) (img *Image, err error) {
 }
 
 // ImageFromManifest returns image inforamtion from its manifest digest
-func (r *registryRepository) ImageFromManifest(tagDigest digest.Digest, tag string) (image *Image, err error) {
+func (r *Repository) ImageFromManifest(tagDigest digest.Digest, tag string) (image *dim.RegistryImage, err error) {
 	var mService distribution.ManifestService
 	if mService, err = r.manifestService(); err != nil {
 		return
@@ -121,7 +111,7 @@ func (r *registryRepository) ImageFromManifest(tagDigest digest.Digest, tag stri
 
 	logrus.WithField("Digest", manif.Config.Digest).Debugln("Unmarshalling V2Image")
 
-	image = &Image{Tag: tag, Digest: string(tagDigest)}
+	image = &dim.RegistryImage{Tag: tag, Digest: string(tagDigest)}
 	if err = json.Unmarshal(payload, image); err != nil {
 		logrus.WithField("Digest", manif.Config.Digest).WithError(err).Errorln("Failed to read image")
 		return
@@ -130,7 +120,7 @@ func (r *registryRepository) ImageFromManifest(tagDigest digest.Digest, tag stri
 	return
 }
 
-func (r *registryRepository) getTagDigest(tag string) (digest.Digest, error) {
+func (r *Repository) getTagDigest(tag string) (digest.Digest, error) {
 	var err error
 	var tDescriptor distribution.Descriptor
 	if tDescriptor, err = r.tagService().Get(ctx, tag); err != nil {
@@ -142,7 +132,7 @@ func (r *registryRepository) getTagDigest(tag string) (digest.Digest, error) {
 }
 
 // DeleteImage sends a delete request on tag
-func (r *registryRepository) DeleteImage(tag string) error {
+func (r *Repository) DeleteImage(tag string) error {
 	logrus.WithField("tag", tag).Debugln("Entering DeleteImage")
 	var err error
 	var mfService distribution.ManifestService
@@ -161,13 +151,13 @@ func (r *registryRepository) DeleteImage(tag string) error {
 }
 
 // WalkImages walks through all images of the repository and writes them in the given channel
-func (r *registryRepository) WalkImages() <-chan *Image {
+func (r *Repository) WalkImages() <-chan *dim.RegistryImage {
 	return WalkImages(r)
 }
 
 // WalkImages walks through all images of the repository and writes them in the given channel
-func WalkImages(r Repository) <-chan *Image {
-	images := make(chan *Image, 3)
+func WalkImages(r dim.Repository) <-chan *dim.RegistryImage {
+	images := make(chan *dim.RegistryImage, 3)
 
 	go func() {
 		defer close(images)
@@ -186,7 +176,7 @@ func WalkImages(r Repository) <-chan *Image {
 			l = l.WithField("tag", tag)
 			l.Debugln("Getting image details")
 
-			var img *Image
+			var img *dim.RegistryImage
 			if img, err = r.Image(tag); err != nil {
 				logrus.WithError(err).Errorln("Failed to get image")
 				return
@@ -200,11 +190,4 @@ func WalkImages(r Repository) <-chan *Image {
 
 	return images
 
-}
-
-// Image representation from the registry
-type Image struct {
-	*image.Image
-	Tag    string
-	Digest string
 }

@@ -28,7 +28,9 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/index"
+	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -79,7 +81,13 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 		cfg.RegisterFunction(n, f)
 	}
 
-	if idx, err = index.New(cfg, registryURL, c, authConfig); err != nil {
+	var client dim.RegistryClient
+
+	if client, err = registry.New(c, authConfig, registryURL); err != nil {
+		return fmt.Errorf("Failed to connect to registry : %v", err)
+	}
+
+	if idx, err = index.New(cfg, client); err != nil {
 		return err
 	}
 
@@ -97,7 +105,6 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 var (
 	port     string
 	indexDir string
-	//secure bool
 )
 
 var s *server.Server

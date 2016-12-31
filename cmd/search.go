@@ -27,9 +27,9 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/lib/utils"
-	t "github.com/nhurel/dim/types"
 	"github.com/spf13/cobra"
 )
 
@@ -69,7 +69,7 @@ func runSearch(c *cli.Cli, args []string) error {
 		authConfig = &types.AuthConfig{Username: username, Password: password}
 	}
 
-	var client registry.Client
+	var client dim.RegistryClient
 	var err error
 
 	logrus.WithField("url", registryURL).Debugln("Connecting to registry")
@@ -85,7 +85,7 @@ func runSearch(c *cli.Cli, args []string) error {
 		q = query
 	}
 
-	var results *t.SearchResults
+	var results *dim.SearchResults
 	if results, err = client.Search(q, a, 0, paginationFlag); err != nil {
 		return fmt.Errorf("Failed to search images : %v", err)
 	}

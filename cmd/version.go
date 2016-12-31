@@ -6,9 +6,9 @@ import (
 
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/environment"
 	"github.com/nhurel/dim/lib/registry"
-	t "github.com/nhurel/dim/types"
 	"github.com/spf13/cobra"
 )
 
@@ -41,8 +41,8 @@ func PrintVersion(c *cli.Cli, ctx context.Context) error {
 		authConfig = &types.AuthConfig{Username: username, Password: password}
 	}
 
-	var client registry.Client
-	var infos *t.Info
+	var client dim.RegistryClient
+	var infos *dim.Info
 
 	client, err = registry.SilentNew(c, authConfig, registryURL)
 

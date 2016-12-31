@@ -19,6 +19,7 @@ import (
 	"text/template"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/nhurel/dim/lib"
 )
 
 // Config holds index configuration
@@ -32,7 +33,7 @@ type Config struct {
 
 // Hook evals the template string  when an event of its type occurs
 type Hook struct {
-	Event  ActionType
+	Event  dim.ActionType
 	Action string
 	eval   *template.Template
 }
@@ -52,8 +53,8 @@ func (c *Config) ParseHooks() error {
 	for i, h := range c.Hooks {
 		logrus.WithField("hook", h).Debugln("Parsing hook")
 		name := fmt.Sprintf("hook_%d", i+1)
-		if h.Event != PushAction && h.Event != DeleteAction {
-			return fmt.Errorf("Unknown event %s. Only %s and %s supported", h.Event, PushAction, DeleteAction)
+		if h.Event != dim.PushAction && h.Event != dim.DeleteAction {
+			return fmt.Errorf("Unknown event %s. Only %s and %s supported", h.Event, dim.PushAction, dim.DeleteAction)
 		}
 
 		var tpl *template.Template
@@ -67,7 +68,7 @@ func (c *Config) ParseHooks() error {
 }
 
 // GetHooks return all hooks for a given ActionType
-func (c *Config) GetHooks(event ActionType) []*Hook {
+func (c *Config) GetHooks(event dim.ActionType) []*Hook {
 	hooks := make([]*Hook, 0, len(c.Hooks))
 	for _, h := range c.Hooks {
 		if h.Event == event {
@@ -78,7 +79,7 @@ func (c *Config) GetHooks(event ActionType) []*Hook {
 }
 
 // Eval runs the template with the given image as parameter
-func (h *Hook) Eval(image *Image) {
+func (h *Hook) Eval(image *dim.IndexImage) {
 	if h.eval == nil {
 		logrus.Errorln("Cannot eval hook, it has no template : %v", h)
 		return

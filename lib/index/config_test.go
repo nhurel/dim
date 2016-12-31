@@ -16,19 +16,21 @@ package index
 import (
 	"fmt"
 	"testing"
+
+	"github.com/nhurel/dim/lib"
 )
 
 func TestParseHooks(t *testing.T) {
 	scenarii := []struct {
-		Event    ActionType
+		Event    dim.ActionType
 		Actions  []string
 		expected error
 	}{
 		{"", nil, nil},
 		{"", []string{"wrong"}, fmt.Errorf("Unknown event . Only push and delete supported")},
-		{DeleteAction, []string{"wrong{{}}"}, fmt.Errorf("Failed to parse hook_1 : template: hook_1:1: missing value for command")},
-		{PushAction, []string{"coorect"}, nil},
-		{DeleteAction, []string{"correct", "wrong{{}}}"}, fmt.Errorf("Failed to parse hook_2 : template: hook_2:1: missing value for command")},
+		{dim.DeleteAction, []string{"wrong{{}}"}, fmt.Errorf("Failed to parse hook_1 : template: hook_1:1: missing value for command")},
+		{dim.PushAction, []string{"coorect"}, nil},
+		{dim.DeleteAction, []string{"correct", "wrong{{}}}"}, fmt.Errorf("Failed to parse hook_2 : template: hook_2:1: missing value for command")},
 	}
 
 	for _, scenario := range scenarii {
@@ -48,26 +50,26 @@ func TestParseHooks(t *testing.T) {
 }
 
 func TestGetHooks(t *testing.T) {
-	deleteHook := &Hook{Event: DeleteAction}
-	pushHook := &Hook{Event: PushAction}
+	deleteHook := &Hook{Event: dim.DeleteAction}
+	pushHook := &Hook{Event: dim.PushAction}
 	scenarii := []struct {
 		given     []*Hook
-		requested ActionType
+		requested dim.ActionType
 		expected  []*Hook
 	}{
 		{
 			given:     []*Hook{deleteHook, pushHook},
-			requested: PushAction,
+			requested: dim.PushAction,
 			expected:  []*Hook{pushHook},
 		},
 		{
 			given:     []*Hook{deleteHook, pushHook},
-			requested: DeleteAction,
+			requested: dim.DeleteAction,
 			expected:  []*Hook{deleteHook},
 		},
 		{
 			given:     []*Hook{pushHook},
-			requested: DeleteAction,
+			requested: dim.DeleteAction,
 			expected:  []*Hook{},
 		},
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/docker/docker/utils/templates"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/spf13/cobra"
@@ -85,7 +86,7 @@ func runShow(c *cli.Cli, args []string) error {
 		if username != "" || password != "" {
 			authConfig = &types.AuthConfig{Username: username, Password: password}
 		}
-		var client registry.Client
+		var client dim.RegistryClient
 
 		logrus.WithField("hostname", parsedName.Hostname()).Debugln("Connecting to registry")
 

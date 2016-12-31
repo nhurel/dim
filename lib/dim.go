@@ -20,6 +20,7 @@ import (
 	"text/template"
 
 	"github.com/Sirupsen/logrus"
+
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/nhurel/dim/wrapper/dockerClient"

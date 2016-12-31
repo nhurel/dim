@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package server
+package server_test
 
 import (
 	"testing"
@@ -35,15 +35,17 @@ import (
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/notifications"
+	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/environment"
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/lib/index/indextest"
+	"github.com/nhurel/dim/lib/mock"
 	"github.com/nhurel/dim/lib/utils"
-	"github.com/nhurel/dim/types"
+	"github.com/nhurel/dim/server"
 )
 
 var (
-	images = []index.Image{
+	images = []dim.IndexImage{
 		{
 			ID:           "123456",
 			Name:         "mongodb",
@@ -133,7 +135,7 @@ func TestSearch(t *testing.T) {
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/search?a=Name:%s&f=Volumes&f=Env&f=Label&f=ExposedPorts&f=Created", image.Name), nil)
 
-		Search(ind, response, request)
+		server.Search(ind, response, request)
 
 		if response.Result().StatusCode != http.StatusOK {
 			t.Fatalf("Expected status code 200 : %s", response.Result().Status)
@@ -141,7 +143,7 @@ func TestSearch(t *testing.T) {
 
 		var body []byte
 		body, err = ioutil.ReadAll(response.Body)
-		sr := &types.SearchResults{}
+		sr := &dim.SearchResults{}
 		json.Unmarshal(body, sr)
 		if sr.NumResults != 1 {
 			t.Fatalf("Image %s not found : %s", image.FullName, string(body))
@@ -181,47 +183,15 @@ func TestSearch(t *testing.T) {
 
 	request := httptest.NewRequest(http.MethodGet, "/v1/search?f=Name", nil)
 	response := httptest.NewRecorder()
-	Search(ind, response, request)
+	server.Search(ind, response, request)
 	if response.Result().StatusCode != http.StatusBadRequest {
 		t.Errorf("Search returned status %s instead of %d when called with no search param", response.Result().Status, http.StatusBadRequest)
 	}
 }
 
-type NoOpRegistryIndex struct {
-	calls map[string][]interface{}
-}
-
-func (i *NoOpRegistryIndex) Build() <-chan bool {
-	i.calls["Build"] = nil
-	return nil
-}
-func (i *NoOpRegistryIndex) GetImage(repository, tag string, dg digest.Digest) (*index.Image, error) {
-	i.calls["GetImageAndIndex"] = []interface{}{repository, tag, dg}
-	return nil, nil
-}
-func (i *NoOpRegistryIndex) IndexImage(image *index.Image) {
-	i.calls["IndexImage"] = []interface{}{image}
-}
-func (i *NoOpRegistryIndex) DeleteImage(id string) {
-	i.calls["DeleteImage"] = []interface{}{id}
-}
-func (i *NoOpRegistryIndex) SearchImages(q, a string, fields []string, offset, maxResults int) (*bleve.SearchResult, error) {
-	i.calls["SearchImages"] = []interface{}{q, a, fields, offset, maxResults}
-	return nil, nil
-}
-
-func (i *NoOpRegistryIndex) Submit(job *index.NotificationJob) {
-	i.calls["Submit"] = []interface{}{job}
-}
-
-func (i *NoOpRegistryIndex) FindImage(id string) (*index.Image, error) {
-	i.calls["FindImage"] = []interface{}{id}
-	return nil, nil
-}
-
 func TestNotifyImageChange(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
-	ind := &NoOpRegistryIndex{calls: make(map[string][]interface{})}
+	ind := &mock.NoOpRegistryIndex{Calls: make(map[string][]interface{})}
 
 	deleteEventDigest := digest.NewDigestFromBytes(digest.Canonical, []byte("delete"))
 	deleteEvent := notifications.Event{
@@ -238,10 +208,10 @@ func TestNotifyImageChange(t *testing.T) {
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBuffer(deleteEventMessage))
 
-	NotifyImageChange(ind, response, request)
+	server.NotifyImageChange(ind, response, request)
 
-	if ind.calls["Submit"] == nil || ind.calls["Submit"][0].(*index.NotificationJob).Action != index.DeleteAction {
-		t.Errorf("NotifyImageChange(deleteEvent) did not submit a job with action %s. Called with %v", index.DeleteAction, ind.calls["Submit"][0])
+	if ind.Calls["Submit"] == nil || ind.Calls["Submit"][0].(*dim.NotificationJob).Action != dim.DeleteAction {
+		t.Errorf("NotifyImageChange(deleteEvent) did not submit a job with action %s. Called with %v", dim.DeleteAction, ind.Calls["Submit"][0])
 	}
 
 	pushEventDigest := digest.NewDigestFromBytes(digest.Canonical, []byte("push"))
@@ -265,17 +235,17 @@ func TestNotifyImageChange(t *testing.T) {
 	response = httptest.NewRecorder()
 	request = httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBuffer(pushEventMessage))
 
-	NotifyImageChange(ind, response, request)
+	server.NotifyImageChange(ind, response, request)
 
-	if ind.calls["Submit"] == nil {
-		t.Errorf("NotifyImageChange(pushEvent) did not call index.GetImageAndIndex %v", ind.calls)
+	if ind.Calls["Submit"] == nil {
+		t.Errorf("NotifyImageChange(pushEvent) did not call index.GetImageAndIndex %v", ind.Calls)
 	} else {
-		j := ind.calls["Submit"][0].(*index.NotificationJob)
-		if j.Action != index.PushAction ||
+		j := ind.Calls["Submit"][0].(*dim.NotificationJob)
+		if j.Action != dim.PushAction ||
 			j.Repository != pushEvent.Target.Repository || // checking repository param
 			j.Tag != pushEvent.Target.Tag || // checking tag param
 			j.Digest != pushEventDigest { // checking digest param
-			t.Errorf("NotifyImageChange(pushEvent) called index.Submit with %v instead of  %s, %s, %s, %v", ind.calls["GetImageAndIndex"], index.PushAction, pushEvent.Target.Repository, pushEvent.Target.Tag, pushEventDigest)
+			t.Errorf("NotifyImageChange(pushEvent) called index.Submit with %v instead of  %s, %s, %s, %v", ind.Calls["GetImageAndIndex"], dim.PushAction, pushEvent.Target.Repository, pushEvent.Target.Tag, pushEventDigest)
 		}
 	}
 
@@ -283,7 +253,7 @@ func TestNotifyImageChange(t *testing.T) {
 	response = httptest.NewRecorder()
 	request = httptest.NewRequest(http.MethodGet, "/dim/notify", bytes.NewBufferString(badMessage))
 
-	NotifyImageChange(ind, response, request)
+	server.NotifyImageChange(ind, response, request)
 	if response.Result().StatusCode != http.StatusBadRequest {
 		t.Errorf("NotifyImaeChange(badRequest) returned status %s instead of %d", response.Result().Status, http.StatusBadRequest)
 	}
@@ -294,26 +264,26 @@ func TestVersion(t *testing.T) {
 
 	scenarii := []struct {
 		given    context.Context
-		expected types.Info
+		expected dim.Info
 	}{
 		{
 			given:    context.Background(),
-			expected: types.Info{Version: ""},
+			expected: dim.Info{Version: ""},
 		},
 		{
 			given:    environment.Set(context.Background(), environment.VersionKey, "1.0.0"),
-			expected: types.Info{Version: "1.0.0"},
+			expected: dim.Info{Version: "1.0.0"},
 		},
 		{
 			given:    environment.Set(environment.Set(context.Background(), environment.VersionKey, "1.0.0"), environment.StartTimeKey, time.Now()),
-			expected: types.Info{Version: "1.0.0", Uptime: "100ms"},
+			expected: dim.Info{Version: "1.0.0", Uptime: "100ms"},
 		},
 	}
 	for _, scenario := range scenarii {
 		w := httptest.NewRecorder()
-		Version(scenario.given, w, nil)
+		server.Version(scenario.given, w, nil)
 
-		got := &types.Info{}
+		got := &dim.Info{}
 		b, err := ioutil.ReadAll(w.Result().Body)
 		if err != nil {
 			t.Fatalf("Failed to parse response : %v", err)

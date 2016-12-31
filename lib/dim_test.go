@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dim
+package dim_test
 
 import (
 	"fmt"
@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/docker/docker/utils/templates"
-	"github.com/docker/engine-api/types"
-	"github.com/docker/engine-api/types/container"
+	"github.com/nhurel/dim/lib"
+	"github.com/nhurel/dim/lib/mock"
 	"github.com/nhurel/dim/lib/utils"
 )
 
@@ -50,7 +50,7 @@ func TestAddLabel(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		d := &Dim{Docker: &NoOpDockerClient{test.mockGetImageLabels}}
+		d := &dim.Dim{Docker: &mock.NoOpDockerClient{ImageInspectLabels: test.mockGetImageLabels, Calls: make(map[string][]interface{})}}
 		//WHEN
 		err := d.AddLabel(parent, test.labels, "")
 
@@ -92,7 +92,8 @@ func TestRemoveLabel(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		d := &Dim{Docker: &NoOpDockerClient{test.mockGetImageLabels}}
+		calls := make(map[string][]interface{})
+		d := &dim.Dim{Docker: &mock.NoOpDockerClient{ImageInspectLabels: test.mockGetImageLabels, Calls: calls}}
 		got := d.RemoveLabel(parent, test.labels, tag)
 
 		if test.expectedError != nil {
@@ -104,7 +105,7 @@ func TestRemoveLabel(t *testing.T) {
 				t.Errorf("RemoveLabel returned error %v. No error was expected", got)
 			}
 			if test.expectedLabelsCall != nil {
-				testNoOpCalls("ImageBuild", test.expectedLabelsCall, t)
+				testNoOpCalls(calls, "ImageBuild", test.expectedLabelsCall, t)
 			}
 		}
 
@@ -114,45 +115,49 @@ func TestRemoveLabel(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	//GIVEN
-	d := &Dim{Docker: &NoOpDockerClient{}}
+	calls := make(map[string][]interface{})
+	d := &dim.Dim{Docker: &mock.NoOpDockerClient{Calls: calls}}
 	//WHEN
 	d.Remove("image")
 	//THEN
-	testNoOpCalls("Remove", []interface{}{"image"}, t)
+	testNoOpCalls(calls, "Remove", []interface{}{"image"}, t)
 
 }
 
 func TestPush(t *testing.T) {
 	//GIVEN
-	d := &Dim{Docker: &NoOpDockerClient{}}
+	calls := make(map[string][]interface{})
+	d := &dim.Dim{Docker: &mock.NoOpDockerClient{Calls: calls}}
 	//WHEN
 	d.Push("image")
 	//THEN
-	testNoOpCalls("Push", []interface{}{"image"}, t)
+	testNoOpCalls(calls, "Push", []interface{}{"image"}, t)
 
 }
 
 func TestPull(t *testing.T) {
 	//GIVEN
-	d := &Dim{Docker: &NoOpDockerClient{}}
+	calls := make(map[string][]interface{})
+	d := &dim.Dim{Docker: &mock.NoOpDockerClient{Calls: calls}}
 	//WHEN
 	d.Pull("image")
 	//THEN
-	testNoOpCalls("Pull", []interface{}{"image"}, t)
+	testNoOpCalls(calls, "Pull", []interface{}{"image"}, t)
 }
 
 func TestGetImageInfo(t *testing.T) {
 	//GIVEN
-	d := &Dim{Docker: &NoOpDockerClient{}}
+	calls := make(map[string][]interface{})
+	d := &dim.Dim{Docker: &mock.NoOpDockerClient{Calls: calls}}
 	//WHEN
 	d.GetImageInfo("image")
 	//THEN
-	testNoOpCalls("Inspect", []interface{}{"image"}, t)
+	testNoOpCalls(calls, "Inspect", []interface{}{"image"}, t)
 }
 
 func TestPrintImageInfo(t *testing.T) {
 	//GIVEN
-	d := &Dim{Docker: &NoOpDockerClient{imageInspectLabels: map[string]string{"key1": "value1"}}}
+	d := &dim.Dim{Docker: &mock.NoOpDockerClient{ImageInspectLabels: map[string]string{"key1": "value1"}, Calls: make(map[string][]interface{})}}
 	b := make([]byte, 1000)
 	writer := bytes.NewBuffer(b)
 	//WHEN
@@ -169,7 +174,7 @@ func TestPrintImageInfo(t *testing.T) {
 
 }
 
-func testNoOpCalls(method string, expectedParams []interface{}, t *testing.T) {
+func testNoOpCalls(calls map[string][]interface{}, method string, expectedParams []interface{}, t *testing.T) {
 	if len(calls[method]) != len(expectedParams) {
 		t.Errorf("%s was called with %d parameters. Expected %d", method, len(calls[method]), len(expectedParams))
 	}
@@ -185,32 +190,4 @@ func testNoOpCalls(method string, expectedParams []interface{}, t *testing.T) {
 			}
 		}
 	}
-}
-
-var calls = make(map[string][]interface{})
-
-type NoOpDockerClient struct {
-	imageInspectLabels map[string]string
-}
-
-func (n *NoOpDockerClient) ImageBuild(parent string, buildLabels map[string]string, tag string) error {
-	calls["ImageBuild"] = []interface{}{parent, buildLabels, tag}
-	return nil
-}
-func (*NoOpDockerClient) Pull(image string) error {
-	calls["Pull"] = []interface{}{image}
-	return nil
-}
-func (n *NoOpDockerClient) Inspect(image string) (types.ImageInspect, error) {
-	calls["Inspect"] = []interface{}{image}
-	return types.ImageInspect{Config: &container.Config{Labels: n.imageInspectLabels}, ContainerConfig: &container.Config{Labels: n.imageInspectLabels}}, nil
-}
-
-func (*NoOpDockerClient) Remove(image string) error {
-	calls["Remove"] = []interface{}{image}
-	return nil
-}
-func (*NoOpDockerClient) Push(image string) error {
-	calls["Push"] = []interface{}{image}
-	return nil
 }
