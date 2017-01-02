@@ -88,7 +88,7 @@ ProxyPassReverse /v2 http://docker-registry:5000/v2
 
 ```
 
-# Configuration
+# Configuration (client and server mode)
 
 All dim commands may need to access a private registry, so the global command line flags are available :
 - `--registry-url` : hostname or full URL to the docker registry
@@ -103,6 +103,28 @@ As it may be cumbersome to always provide these flags, those values can be given
 Finally, dim will also search for those settings in the `dim.yml` config file that can be located :
 - in current directory
 - in `$HOME/.dim/` directory  
+
+## Hooks (server configuration)
+
+In server mode, dim lets you create advanced hooks when an image is pushed or deleted from your registry. Hooks are defined in the server yaml configuration under the `index.hooks` key.
+For example, the following configuration will send messages to a slack channel on push events :
+```yml
+index:
+  hooks:
+    - Event: push
+      Action: |
+        {{ if eq .Name "dim" }}
+        {{ with $payload := printf `{"text": "A new dim image has been pushed : %s"}`  .FullName }}
+        {{  sendRequest "POST"  "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX" $payload }}
+        {{ end }}
+        {{else}}
+        {{ with $payload := printf `{"text": "A random image has been pushed : %s"}`  .FullName }}
+        {{  sendRequest "POST"  "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX" $payload }}
+        {{ end }}
+        {{ end }}
+```
+
+As you can see, hooks are defined as Go temaplates. Image information is accessible from the template allowing you to write advanced rules to trigger whatever you may need
 
 # Managing images using dim
 
