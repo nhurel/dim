@@ -111,14 +111,10 @@ func NotifyImageChange(i dim.RegistryIndex, w http.ResponseWriter, r *http.Reque
 		case notifications.EventActionDelete:
 			logrus.WithField("enveloppe", enveloppe).Infoln("Processing delete event")
 			i.Submit(&dim.NotificationJob{Action: dim.DeleteAction, Digest: event.Target.Digest})
-		// i.DeleteImage(event.Target.Digest.String())
 		case notifications.EventActionPush:
 			if event.Target.MediaType == schema2.MediaTypeManifest {
 				logrus.WithField("enveloppe", enveloppe).Infoln("Processing push event")
 				i.Submit(&dim.NotificationJob{Action: dim.PushAction, Repository: event.Target.Repository, Tag: event.Target.Tag, Digest: event.Target.Digest})
-				//if err := i.GetImageAndIndex(event.Target.Repository, event.Target.Tag, event.Target.Digest); err != nil {
-				//	logrus.WithField("EventTarget", event.Target).WithError(err).Errorln("Failed to reindex image")
-				//}
 			} else {
 				logrus.WithField("mediatype", event.Target.MediaType).WithField("Event", event).Debugln("Event safely ignored because mediatype is unknown")
 			}
