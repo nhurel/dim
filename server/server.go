@@ -37,15 +37,13 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance to listen on given port and use given index
-func NewServer(port string, index dim.RegistryIndex, ctx context.Context) *Server {
+func NewServer(port string, index dim.RegistryIndex, ctx context.Context, proxy dim.RegistryProxy) *Server {
 	c := environment.Set(ctx, environment.StartTimeKey, time.Now())
+
 	http.HandleFunc("/v1/search", handler(index, Search))
 	http.HandleFunc("/dim/notify", handler(index, NotifyImageChange))
 	http.HandleFunc("/dim/version", buildVersionHandler(c))
-	http.HandleFunc("/v2/_catalog", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "{}")
-	})
+	http.HandleFunc("/", proxy.Forwards)
 	return &Server{manners.NewWithServer(&http.Server{Addr: port, Handler: http.DefaultServeMux}), index}
 }
 

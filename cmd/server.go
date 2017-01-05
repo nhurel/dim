@@ -25,6 +25,8 @@ import (
 	"bytes"
 	"net/http"
 
+	"net/url"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
@@ -83,6 +85,11 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 
 	var client dim.RegistryClient
 
+	var url *url.URL
+	if url, err = url.Parse(registryURL); err != nil {
+		return err
+	}
+
 	if client, err = registry.New(c, authConfig, registryURL); err != nil {
 		return fmt.Errorf("Failed to connect to registry : %v", err)
 	}
@@ -97,7 +104,10 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 		_ = <-indexationDone
 		logrus.Infoln("All images indexed")
 	}()
-	s = server.NewServer(port, idx, ctx)
+
+	proxy := server.NewRegistryProxy(url)
+
+	s = server.NewServer(port, idx, ctx, proxy)
 	logrus.Infoln("Server listening...")
 	return s.Run()
 }

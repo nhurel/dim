@@ -19,6 +19,8 @@ import (
 
 	"text/template"
 
+	"net/http"
+
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/registry/client"
@@ -157,4 +159,9 @@ type NotificationJob struct {
 	Repository string
 	Tag        string
 	Digest     digest.Digest
+}
+
+// RegistryProxy forwards request to a docker registry if user is granted
+type RegistryProxy interface {
+	Forwards(w http.ResponseWriter, r *http.Request)
 }

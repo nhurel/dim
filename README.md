@@ -1,7 +1,7 @@
 # Docker Image Manager
 
 DIM is a Docker Image Management utility. It's the perfect companion for your self-hosted private registry and provides useful commands to manage your docker images :
-- [Advanced search](#advanced-searches) 
+- [Advanced search](#advanced-searches)
 - Image labels add / removal
 - Image deletion (both locally and on your private registry)
 - Show image details
@@ -36,9 +36,6 @@ services:
   container_name: registry
   restart: always
   image: registry:2.4.1
-  ports:
-    - 5000:5000
-    - 5001:5001
   volumes:
     - registry.yml:/etc/docker/registry/config.yml
   networks:
@@ -73,19 +70,14 @@ notifications:
       backoff: 5000
 ```
 
-Finally run an httpd server in front of these 2 services and make sure to redirect `/v1` and `/dim` URLs to the dim service and `/v2` URLs to the docker registry. You can also use this httpd instance to manage auhtorizations as described in [this docker recipe](https://docs.docker.com/registry/recipes/apache/)
+**Congratulations : You now have a docker registry accessible on port 6000 that provides a search endpoint !**
 
-Example apache httpd config for dim + docker regitry :
+Optionnaly, you can also setup an http server in front of the container to manage auhtorizations as described in [this docker recipe](https://docs.docker.com/registry/recipes/apache/)
+
+Example apache httpd config for dim :
 ```bash
-ProxyPass        /v1 http://dim:6000/v1
-ProxyPassReverse /v1 http://dim:6000/v1
-
-ProxyPass        /dim http://dim:6000/dim
-ProxyPassReverse /dim http://dim:6000/dim
-
-ProxyPass        /v2 http://docker-registry:5000/v2
-ProxyPassReverse /v2 http://docker-registry:5000/v2
-
+ProxyPass        / http://dim:6000/
+ProxyPassReverse / http://dim:6000/
 ```
 
 # Configuration (client and server mode)

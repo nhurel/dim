@@ -135,7 +135,7 @@ func (c *Client) Search(query, advanced string, offset, maxResults int) (*dim.Se
 
 	httpClient := http.Client{Transport: c.transport}
 
-	endpoint := strings.TrimSuffix(c.registryURL, "/")+"/v1/search"
+	endpoint := strings.TrimSuffix(c.registryURL, "/") + "/v1/search"
 	if resp, err = httpClient.PostForm(endpoint, values); err != nil {
 		return nil, fmt.Errorf("Failed to send request : %v", err)
 	}
