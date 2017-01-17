@@ -133,6 +133,18 @@ func handleSignal() {
 	}()
 }
 
+var defaultNotificationRequest = notificationRequest{
+	method: "GET",
+}
+
+type notificationRequest struct {
+	method  string
+	payload string
+	headers http.Header
+}
+
+type notificationRequestOption func(*notificationRequest)
+
 var hookFunctions = map[string]interface{}{
 	"info": func(args ...interface{}) bool {
 		logrus.Infoln(args)
@@ -146,14 +158,38 @@ var hookFunctions = map[string]interface{}{
 		logrus.Errorln(args)
 		return true
 	},
-	"sendRequest": func(method, url, payload string) error {
+	"sendRequest": func(url string, options ...notificationRequestOption) error {
+		request := defaultNotificationRequest
+		request.headers = make(http.Header)
 
-		r, _ := http.NewRequest(method, url, bytes.NewBufferString(payload))
+		for _, opts := range options {
+			opts(&request)
+		}
+
+		r, _ := http.NewRequest(request.method, url, bytes.NewBufferString(request.payload))
+		r.Header = request.headers
+		logrus.WithFields(logrus.Fields{"url": url, "payload": request.payload, "method": request.method}).Infoln("Send request")
+
 		resp, err := http.DefaultClient.Do(r)
 		if err != nil {
 			return err
 		}
-		logrus.WithFields(logrus.Fields{"url": url, "payload": payload, "method": method}).Infoln(resp.Status)
+		logrus.WithFields(logrus.Fields{"url": url, "payload": request.payload, "method": request.method}).Infoln(resp.Status)
 		return nil
+	},
+	"withPayload": func(payload string) notificationRequestOption {
+		return func(req *notificationRequest) {
+			req.payload = payload
+		}
+	},
+	"withMethod": func(method string) notificationRequestOption {
+		return func(req *notificationRequest) {
+			req.method = method
+		}
+	},
+	"withHeader": func(key, value string) notificationRequestOption {
+		return func(req *notificationRequest) {
+			req.headers.Add(key, value)
+		}
 	},
 }

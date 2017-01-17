@@ -84,5 +84,7 @@ func (h *Hook) Eval(image *dim.IndexImage) {
 		logrus.Errorln("Cannot eval hook, it has no template : %v", h)
 		return
 	}
-	h.eval.Execute(ioutil.Discard, image)
+	if err := h.eval.Execute(ioutil.Discard, image); err != nil {
+		logrus.WithError(err).Errorln("An error occured while processing hook")
+	}
 }

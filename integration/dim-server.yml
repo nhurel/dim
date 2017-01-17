@@ -16,12 +16,14 @@ index:
    - Event: push
      Action: |
        {{ error "triggering push hook for image" .Name }}
-       {{ with $payload := printf `{"text" : "New image has been pushed %s:%s - %s}` .Name .Tag .FullName }}
-       {{ error "triggering push hook with payload" $payload }}
-       {{ sendRequest "POST" "http://apache/404.html" $payload }}
+       {{ with $payload := printf `{"text" : "New image has been pushed %s:%s - %s}` .Name .Tag .FullName | withPayload }}
+          {{ with $method := withMethod "POST" }}
+           {{ error "triggering push hook with payload" $payload }}
+           {{ sendRequest "http://dim/404.html" $method  $payload }}
+         {{end}}
        {{end}}
 
    - Event: delete
      Action: |
         {{ error "triggering push hook for image" .Name }}
-        {{ sendRequest "GET" "http://apache/404.html" "" }}
+        {{ sendRequest "http://dim/404.html" }}

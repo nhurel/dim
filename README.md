@@ -106,12 +106,16 @@ index:
     - Event: push
       Action: |
         {{ if eq .Name "dim" }}
-        {{ with $payload := printf `{"text": "A new dim image has been pushed : %s"}`  .FullName }}
-        {{  sendRequest "POST"  "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX" $payload }}
+        {{ with $payload := printf `{"text": "A new dim image has been pushed : %s"}`  .FullName | withPayload }}
+          {{ with $method := withMethod "POST" }}
+            {{  sendRequest "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX" $method $payload }}
+          {{ end }}
         {{ end }}
         {{else}}
-        {{ with $payload := printf `{"text": "A random image has been pushed : %s"}`  .FullName }}
-        {{  sendRequest "POST"  "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX" $payload }}
+        {{ with $payload := printf `{"text": "A random image has been pushed : %s"}`  .FullName | withPayload }}
+          {{ with $method := withMethod "POST" }}
+             {{  sendRequest "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX" $method $payload }}
+          {{ end }}
         {{ end }}
         {{ end }}
 ```
