@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	apitypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/builder"
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/progress"
@@ -49,7 +50,7 @@ type Docker interface {
 type DockerClient struct {
 	c        *client.Client
 	Cli      *cli.Cli
-	Auth     *types.AuthConfig
+	Auth     *apitypes.AuthConfig
 	Insecure bool
 }
 
@@ -153,7 +154,7 @@ func (dc *DockerClient) Authenticate(registryURL string) (string, error) {
 	}
 
 	if dc.Auth == nil {
-		dc.Auth = &types.AuthConfig{}
+		dc.Auth = &apitypes.AuthConfig{}
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, utils.BuildURL(fmt.Sprintf("%s/v2/", registryURL), dc.Insecure), &bytes.Buffer{})
@@ -225,7 +226,7 @@ func (dc *DockerClient) Push(image string) error {
 	return err
 }
 
-func encodeAuthToBase64(authConfig types.AuthConfig) (string, error) {
+func encodeAuthToBase64(authConfig apitypes.AuthConfig) (string, error) {
 	buf, err := json.Marshal(authConfig)
 	if err != nil {
 		return "", err
@@ -242,7 +243,7 @@ func (dc *DockerClient) Inspect(image string) (types.ImageInspect, error) {
 		return types.ImageInspect{}, err
 	}
 
-	resp, _, err := c.ImageInspectWithRaw(context.Background(), image, false)
+	resp, _, err := c.ImageInspectWithRaw(context.Background(), image)
 
 	return resp, err
 }

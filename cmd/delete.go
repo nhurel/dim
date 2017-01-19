@@ -19,8 +19,8 @@ import (
 	"context"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/reference"
-	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/lib/registry"
