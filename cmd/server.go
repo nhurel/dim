@@ -35,7 +35,6 @@ import (
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/server"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func newServerCommand(c *cli.Cli, rootCommand *cobra.Command, ctx context.Context) {
@@ -71,17 +70,13 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 	}
 
 	var idx *index.Index
-	cfg := &index.Config{Directory: realDir}
 	var err error
 
-	hooks := make([]*index.Hook, 0, 10)
-	if err = viper.UnmarshalKey("index.hooks", &hooks); err != nil {
+	var cfg *index.Config
+	if cfg, err = readConfigHooks(hookFunctions); err != nil {
 		return err
 	}
-	cfg.Hooks = hooks
-	for n, f := range hookFunctions {
-		cfg.RegisterFunction(n, f)
-	}
+	cfg.Directory = realDir
 
 	var client dim.RegistryClient
 

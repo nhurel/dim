@@ -48,10 +48,6 @@ func New(cfg *Config, regClient dim.RegistryClient) (*Index, error) {
 	var i bleve.Index
 	var err error
 
-	if err = cfg.ParseHooks(); err != nil {
-		return nil, fmt.Errorf("Failed to parse hooks : %v", err)
-	}
-
 	mapping := bleve.NewIndexMapping()
 	mapping.AddDocumentMapping("image", ImageMapping)
 	if i, err = bleve.New(cfg.Directory, mapping); err != nil {
@@ -392,11 +388,13 @@ func (idx *Index) handleNotifications() {
 }
 
 func triggerHooks(hooks []*Hook, img *dim.IndexImage) {
-	logrus.WithField("image", img).Debugln("Triggering hooks")
+	log := logrus.WithField("image", img)
+	log.Debugln("Triggering hooks")
 	for _, hook := range hooks {
 		go func(h *Hook, i *dim.IndexImage) {
-			h.Eval(i)
+			if err := h.Eval(i); err != nil {
+				log.WithError(err).Errorln("An error occured while processing hook")
+			}
 		}(hook, img)
-
 	}
 }

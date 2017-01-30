@@ -14,3 +14,14 @@
 registry-url: localhost
 registry-user: "" 
 registry-password: ""
+
+index:
+  hooks:
+    - Event: push
+      Action: |
+        {{ info "triggering push hook for image" .Name }}
+        {{ with $payload := printf `{"text" : "New image has been pushed %s:%s - %s}` .Name .Tag .FullName | withPayload }}
+           {{ with $method := withMethod "POST" }}
+            {{ sendRequest "http://dim/404.html" $method  $payload }}
+          {{end}}
+        {{end}}

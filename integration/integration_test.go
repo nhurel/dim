@@ -222,3 +222,19 @@ Command : [redis-server]
 	c.Assert(err, IsNil)
 	c.Assert(result, Equals, string(fc))
 }
+
+func (s *IntegrationTestSuite) TestHooktestCommand(c *C) {
+	if o, err := runCommand(dimExec, "label", "-p", "redis:3.2.1-alpine", "-t", "localhost/redis:3.2.1-alpine", "type=database"); err != nil {
+		c.Error(o)
+		c.Fatal(err)
+	}
+
+	result, err := runCommand(dimExec, "hooktest", "localhost/redis:3.2.1-alpine")
+
+	c.Assert(err, IsNil)
+	c.Assert(result, Equals, `Hook #0 would produce :
+Would have logged at INFO level : triggering push hook for image [localhost/redis]
+Would have sent payload {"text" : "New image has been pushed localhost/redis:3.2.1-alpine - localhost/redis:3.2.1-alpine} with method POST to http://dim/404.html with headers map[]
+`)
+
+}

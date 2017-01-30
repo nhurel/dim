@@ -27,6 +27,8 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib"
+	"github.com/nhurel/dim/lib/index"
+	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	"github.com/spf13/cobra"
@@ -102,6 +104,7 @@ func NewRootCommand(cli *cli.Cli, ctx context.Context) *cobra.Command {
 	newServerCommand(cli, rootCommand, ctx)
 	newShowCommand(cli, rootCommand, ctx)
 	newVersionCommand(cli, rootCommand, ctx)
+	newHooktestCommand(cli, rootCommand, ctx)
 
 	return rootCommand
 }
@@ -155,11 +158,51 @@ func guessTag(tagOption string, imageName string, imageTags []string, override b
 	return tag, nil
 }
 
+func connectRegistry(c *cli.Cli, image string) (client dim.RegistryClient, parsedName reference.Named, err error) {
+	if parsedName, err = parseName(image, registryURL); err != nil {
+		return
+	}
+
+	var authConfig *types.AuthConfig
+	if username != "" || password != "" {
+		authConfig = &types.AuthConfig{Username: username, Password: password}
+	}
+
+	logrus.WithField("hostname", parsedName.Hostname()).Debugln("Connecting to registry")
+
+	if client, err = registry.New(c, authConfig, utils.BuildURL(parsedName.Hostname(), insecure)); err != nil {
+		err = fmt.Errorf("Failed to connect to registry : %v", err)
+		return
+	}
+	return
+}
+
+func readConfigHooks(hookFns map[string]interface{}) (*index.Config, error) {
+	cfg := &index.Config{}
+
+	hooks := make([]*index.Hook, 0, 10)
+	if err := viper.UnmarshalKey("index.hooks", &hooks); err != nil {
+		return nil, err
+	}
+
+	cfg.Hooks = hooks
+
+	for n, f := range hookFns {
+		cfg.RegisterFunction(n, f)
+	}
+
+	if err := cfg.ParseHooks(); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
 const (
 	bashCompletionFunc = `
 __custom_func() {
 	case ${last_command} in
-		dim_show | dim_delete | dim_label)
+		dim_show | dim_delete | dim_label | dim_hooktest)
 			__docker_images
 			return
 			;;

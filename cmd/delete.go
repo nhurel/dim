@@ -18,13 +18,9 @@ import (
 
 	"context"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/reference"
 	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib"
-	"github.com/nhurel/dim/lib/registry"
-	"github.com/nhurel/dim/lib/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -57,23 +53,11 @@ func runDelete(c *cli.Cli, args []string) error {
 	Dim.Remove(image)
 
 	if remoteFlag {
-
-		var parsedName reference.Named
-		var err error
-		if parsedName, err = parseName(image, registryURL); err != nil {
-			return err
-		}
-
-		var authConfig *types.AuthConfig
-		if username != "" || password != "" {
-			authConfig = &types.AuthConfig{Username: username, Password: password}
-		}
 		var client dim.RegistryClient
-
-		logrus.WithField("hostname", parsedName.Hostname()).Debugln("Connecting to registry")
-
-		if client, err = registry.New(c, authConfig, utils.BuildURL(parsedName.Hostname(), insecure)); err != nil {
-			return fmt.Errorf("Failed to connect to registry : %v", err)
+		var err error
+		var parsedName reference.Named
+		if client, parsedName, err = connectRegistry(c, image); err != nil {
+			return err
 		}
 
 		return client.DeleteImage(parsedName)

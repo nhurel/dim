@@ -79,12 +79,9 @@ func (c *Config) GetHooks(event dim.ActionType) []*Hook {
 }
 
 // Eval runs the template with the given image as parameter
-func (h *Hook) Eval(image *dim.IndexImage) {
+func (h *Hook) Eval(image *dim.IndexImage) error {
 	if h.eval == nil {
-		logrus.Errorln("Cannot eval hook, it has no template : %v", h)
-		return
+		return fmt.Errorf("Cannot eval hook, it has no template : %v", h)
 	}
-	if err := h.eval.Execute(ioutil.Discard, image); err != nil {
-		logrus.WithError(err).Errorln("An error occured while processing hook")
-	}
+	return h.eval.Execute(ioutil.Discard, image)
 }

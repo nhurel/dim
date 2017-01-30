@@ -215,13 +215,7 @@ func (c *Client) PrintImageInfo(w io.Writer, parsedName reference.Named, tpl *te
 		return err
 	}
 
-	var tag string
-	switch parsedName := parsedName.(type) {
-	case reference.NamedTagged:
-		tag = parsedName.Tag()
-	default:
-		tag = "latest"
-	}
+	tag := ParseTag(parsedName)
 
 	var image *dim.RegistryImage
 	if image, err = repository.Image(tag); err != nil {
@@ -283,4 +277,16 @@ func (c *Client) ServerVersion() (*dim.Info, error) {
 	}
 
 	return nil, fmt.Errorf("Server returned an error : %s", resp.Status)
+}
+
+// ParseTag returns the tag corresponding to the given image name
+func ParseTag(name reference.Named) string {
+	var tag string
+	switch parsedName := name.(type) {
+	case reference.NamedTagged:
+		tag = parsedName.Tag()
+	default:
+		tag = "latest"
+	}
+	return tag
 }

@@ -21,6 +21,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
+	"time"
+
 	"github.com/docker/engine-api/types"
 	"github.com/nhurel/dim/lib/utils"
 	"github.com/nhurel/dim/wrapper/dockerClient"
@@ -144,4 +146,55 @@ func (d *Dim) PrintImageInfo(w io.Writer, image string, tpl *template.Template) 
 
 	return tpl.Execute(w, infos)
 
+}
+
+// AsIndexImage returns the IndexImage representation of an image metadata
+func (d *Dim) AsIndexImage(image string) (*IndexImage, error) {
+	var err error
+	var dockerImage types.ImageInspect
+	if dockerImage, err = d.Docker.Inspect(image); err != nil {
+		return nil, err
+	}
+
+	//FIXME : Can I use image.Parse instead ?
+	fullName := dockerImage.RepoTags[0]
+
+	parsed := &IndexImage{
+		ID:       dockerImage.ID,
+		Name:     strings.Split(fullName, ":")[0],
+		Tag:      strings.Split(fullName, ":")[1],
+		Comment:  dockerImage.Comment,
+		Author:   dockerImage.Author,
+		FullName: fullName,
+	}
+	parsed.Created, _ = time.Parse(time.RFC3339, dockerImage.Created)
+
+	parsed.Label = dockerImage.Config.Labels
+	parsed.Labels = utils.Keys(dockerImage.Config.Labels)
+
+	volumes := make([]string, 0, len(dockerImage.Config.Volumes))
+	for v := range dockerImage.Config.Volumes {
+		volumes = append(volumes, v)
+	}
+	parsed.Volumes = volumes
+
+	envs := make(map[string]string, len(dockerImage.Config.Env))
+	for _, iLabel := range dockerImage.Config.Env {
+		split := strings.Split(iLabel, "=") // TODO Use regexp for better label handling
+		if len(split) > 1 {
+			envs[split[0]] = split[1]
+		}
+	}
+	parsed.Env = envs
+	parsed.Envs = utils.Keys(envs)
+
+	ports := make([]int, 0, len(dockerImage.Config.ExposedPorts))
+	for p := range dockerImage.Config.ExposedPorts {
+		ports = append(ports, p.Int())
+	}
+	parsed.ExposedPorts = ports
+
+	parsed.Size = dockerImage.Size
+
+	return parsed, nil
 }

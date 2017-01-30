@@ -75,7 +75,7 @@ func (r *Repository) Image(tag string) (img *dim.RegistryImage, err error) {
 	return
 }
 
-// ImageFromManifest returns image inforamtion from its manifest digest
+// ImageFromManifest returns image information from its manifest digest
 func (r *Repository) ImageFromManifest(tagDigest digest.Digest, tag string) (image *dim.RegistryImage, err error) {
 	var mService distribution.ManifestService
 	if mService, err = r.manifestService(); err != nil {
