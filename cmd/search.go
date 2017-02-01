@@ -54,8 +54,9 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 
 	searchCommand.Flags().BoolVarP(&advancedFlag, "advanced", "a", false, "Runs complex query")
 	searchCommand.Flags().IntVar(&paginationFlag, "bulk-size", 15, "Number of restuls to fetch at a time")
-	searchCommand.Flags().BoolVar(&unlimitedFlag, "unlimited", false, "Prints all results at once")
+	searchCommand.Flags().BoolVarP(&unlimitedFlag, "unlimited", "u", false, "Prints all results at once")
 	searchCommand.Flags().IntVarP(&widthFlag, "width", "W", 150, "Column width")
+	searchCommand.Flags().BoolVarP(&quietFlag, "quiet", "q", false, "Print only image fullname")
 	rootCommand.AddCommand(searchCommand)
 }
 
@@ -95,9 +96,15 @@ func runSearch(c *cli.Cli, args []string) error {
 		fmt.Fprintf(c.Err, "%d results found :\n", results.NumResults)
 		printer := cli.NewTabPrinter(c.Out, c.In)
 		printer.Width = widthFlag
-		printer.Append([]string{"Name", "Tag", "Created", "Labels", "Volumes", "Ports"})
+		if !quietFlag {
+			printer.Append([]string{"Name", "Tag", "Created", "Labels", "Volumes", "Ports"})
+		}
 		for _, r := range results.Results {
-			printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
+			if quietFlag {
+				printer.Append([]string{r.FullName})
+			} else {
+				printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
+			}
 		}
 		printer.PrintAll(false)
 		for fetched := len(results.Results); results.NumResults > fetched; {
@@ -105,7 +112,11 @@ func runSearch(c *cli.Cli, args []string) error {
 				return fmt.Errorf("Failed to search images : %v", err)
 			}
 			for _, r := range results.Results {
-				printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
+				if quietFlag {
+					printer.Append([]string{r.FullName})
+				} else {
+					printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
+				}
 			}
 			printer.PrintAll(!unlimitedFlag)
 			fetched += len(results.Results)
@@ -131,4 +142,5 @@ var (
 	paginationFlag int
 	widthFlag      int
 	unlimitedFlag  bool
+	quietFlag      bool
 )
