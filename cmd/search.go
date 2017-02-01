@@ -54,6 +54,7 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 
 	searchCommand.Flags().BoolVarP(&advancedFlag, "advanced", "a", false, "Runs complex query")
 	searchCommand.Flags().IntVar(&paginationFlag, "bulk-size", 15, "Number of restuls to fetch at a time")
+	searchCommand.Flags().BoolVar(&unlimitedFlag, "unlimited", false, "Prints all results at once")
 	searchCommand.Flags().IntVarP(&widthFlag, "width", "W", 150, "Column width")
 	rootCommand.AddCommand(searchCommand)
 }
@@ -106,7 +107,7 @@ func runSearch(c *cli.Cli, args []string) error {
 			for _, r := range results.Results {
 				printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
 			}
-			printer.PrintAll(true)
+			printer.PrintAll(!unlimitedFlag)
 			fetched += len(results.Results)
 		}
 		fmt.Println()
@@ -129,4 +130,5 @@ var (
 	advancedFlag   bool
 	paginationFlag int
 	widthFlag      int
+	unlimitedFlag  bool
 )
