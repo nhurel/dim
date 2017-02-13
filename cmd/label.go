@@ -89,7 +89,7 @@ dim label --delete ubuntu:xenial os version
 
 	labelCommand.Flags().BoolVarP(&deleteFlag, "delete", "d", false, "Delete the label")
 	labelCommand.Flags().StringVarP(&imageFlag, "tag", "t", "", "Tag the new labeled image")
-	labelCommand.Flags().BoolVarP(&remoteFlag, "remote", "r", false, "Delete the original image both locally and on the remote registry")
+	labelCommand.Flags().BoolVarP(&remoteFlag, "remote", "r", false, "Tag or Delete the original image both locally and on the remote registry")
 	labelCommand.Flags().BoolVarP(&overrideFlag, "override", "o", false, "Delete the original image locally only")
 	labelCommand.Flags().BoolVarP(&pullFlag, "pull", "p", false, "Pull the image before adding label to ensure label is added to latest version")
 	rootCommand.AddCommand(labelCommand)
