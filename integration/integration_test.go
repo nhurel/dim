@@ -238,3 +238,16 @@ Would have sent payload {"text" : "New image has been pushed localhost/redis:3.2
 `)
 
 }
+
+func (s *IntegrationTestSuite) TestSearchQuietOption(c *C) {
+	if o, err := runCommand(dimExec, "label", "-p", "redis:3.2.1-alpine", "-t", "localhost/redis:3.2.1-alpine", "-r", "-k", "type=database"); err != nil {
+		c.Error(o)
+		c.Fatal(err)
+	}
+	time.Sleep(750 * time.Millisecond) // tempo to make sure dim indexes the image
+	result, err := runCommand(dimExec, "search", "-q", "--registry-url=localhost", "-k", "-W", "18", "redis")
+	c.Assert(err, IsNil)
+	c.Assert(result, Equals, `1 results found :
+redis:3.2.1-alpine
+`)
+}
