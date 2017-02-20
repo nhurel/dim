@@ -68,3 +68,8 @@ func readPassword(a ...interface{}) (int, error) {
 	}
 	return 1, err
 }
+
+// Printer defines common method to print rows of results
+type Printer interface {
+	PrintAll(wait bool) error
+}

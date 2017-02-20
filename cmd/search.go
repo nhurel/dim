@@ -57,6 +57,7 @@ dim search -a +Label.os:ubuntu -Label.version=xenial`,
 	searchCommand.Flags().BoolVarP(&unlimitedFlag, "unlimited", "u", false, "Prints all results at once")
 	searchCommand.Flags().IntVarP(&widthFlag, "width", "W", 150, "Column width")
 	searchCommand.Flags().BoolVarP(&quietFlag, "quiet", "q", false, "Print only image fullname")
+	searchCommand.Flags().StringVarP(&templateFlag, "template", "t", "", "Template to use to display image info")
 	rootCommand.AddCommand(searchCommand)
 }
 
@@ -94,31 +95,34 @@ func runSearch(c *cli.Cli, args []string) error {
 
 	if results.NumResults > 0 {
 		fmt.Fprintf(c.Err, "%d results found :\n", results.NumResults)
-		printer := cli.NewTabPrinter(c.Out, c.In)
-		printer.Width = widthFlag
-		if !quietFlag {
-			printer.Append([]string{"Name", "Tag", "Created", "Labels", "Volumes", "Ports"})
+		var printer cli.Printer
+		template := guessTemplate(quietFlag, templateFlag)
+		switch template {
+		case "":
+			printer = cli.NewTabPrinter(c.Out, c.In, cli.WithWidth(widthFlag))
+			printer.(*cli.TabPrinter).Append([]string{"Name", "Tag", "Created", "Labels", "Volumes", "Ports"})
+		default:
+			printer = cli.NewTemplatePrinter(c.Out, c.In, template)
 		}
+
 		for _, r := range results.Results {
-			if quietFlag {
-				printer.Append([]string{r.FullName})
-			} else {
-				printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
-			}
+			printAppend(printer, r)
 		}
-		printer.PrintAll(false)
+
+		if err := printer.PrintAll(false); err != nil {
+			return err
+		}
 		for fetched := len(results.Results); results.NumResults > fetched; {
 			if results, err = client.Search(q, a, fetched, paginationFlag); err != nil {
 				return fmt.Errorf("Failed to search images : %v", err)
 			}
 			for _, r := range results.Results {
-				if quietFlag {
-					printer.Append([]string{r.FullName})
-				} else {
-					printer.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
-				}
+				printAppend(printer, r)
 			}
-			printer.PrintAll(!unlimitedFlag)
+
+			if err := printer.PrintAll(!unlimitedFlag); err != nil {
+				return err
+			}
 			fetched += len(results.Results)
 		}
 		fmt.Println()
@@ -135,6 +139,21 @@ func intToStringSlice(iSlice []int) []string {
 		result[ind] = strconv.Itoa(i)
 	}
 	return result
+}
+
+func printAppend(printer cli.Printer, r dim.SearchResult) {
+	if p, ok := printer.(*cli.TabPrinter); ok {
+		p.Append([]string{r.Name, r.Tag, utils.ParseDuration(time.Since(r.Created)), utils.FlatMap(r.Label), strings.Join(r.Volumes, ","), strings.Join(intToStringSlice(r.ExposedPorts), ",")})
+	} else if p, ok := printer.(*cli.TemplatePrinter); ok {
+		p.Append(r)
+	}
+}
+
+func guessTemplate(quiet bool, tpl string) string {
+	if quiet {
+		return "{{.FullName}}"
+	}
+	return tpl
 }
 
 var (

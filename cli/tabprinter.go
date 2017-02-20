@@ -29,11 +29,47 @@ type TabPrinter struct {
 	Separator byte
 	Width     int
 	Wait      bool
+	Template  string
 }
 
 // NewTabPrinter returns a TabPrinter with sane defaults
-func NewTabPrinter(writer io.Writer, reader io.Reader) *TabPrinter {
-	return &TabPrinter{w: writer, r: reader, Separator: '\t', Width: 80, rows: make([][]string, 0, 20)}
+func NewTabPrinter(writer io.Writer, reader io.Reader, options ...TabPrinterOption) *TabPrinter {
+	tp := &TabPrinter{
+		w:         writer,
+		r:         reader,
+		Separator: '\t',
+		Width:     80,
+		rows:      make([][]string, 0, 20),
+		Template:  rowTemplate,
+	}
+	for _, opt := range options {
+		opt(tp)
+	}
+	return tp
+}
+
+// TabPrinterOption lets you customize your TabPrinter instance
+type TabPrinterOption func(printer *TabPrinter)
+
+// WithSeparator returns a TabPrinterOption to set the printer separator character
+func WithSeparator(sep byte) TabPrinterOption {
+	return func(printer *TabPrinter) {
+		printer.Separator = sep
+	}
+}
+
+// WithWidth returns a TabPrinterOption to set the printer width
+func WithWidth(w int) TabPrinterOption {
+	return func(printer *TabPrinter) {
+		printer.Width = w
+	}
+}
+
+// WithTemplate returns a TabPrinterOption to set the printer template
+func WithTemplate(t string) TabPrinterOption {
+	return func(printer *TabPrinter) {
+		printer.Template = t
+	}
 }
 
 // Append adds a row of data to the collection of data to print
@@ -54,7 +90,10 @@ func (t *TabPrinter) PrintAll(wait bool) error {
 		"sep":    func() string { return string(t.Separator) },
 	}
 
-	tpl, _ := template.New("rowPrinter").Funcs(funcMap).Parse(rowTemplate)
+	tpl, err := template.New("rowPrinter").Funcs(funcMap).Parse(rowTemplate)
+	if err != nil {
+		return err
+	}
 	for _, row := range t.rows[t.position:] {
 		if wait {
 			var b = make([]byte, 1, 1)

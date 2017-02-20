@@ -21,10 +21,8 @@ import (
 
 func TestPrintAll(t *testing.T) {
 	writer := bytes.NewBufferString("")
-	printer := NewTabPrinter(writer, os.Stdin)
+	printer := NewTabPrinter(writer, os.Stdin, WithWidth(30), WithSeparator('+'))
 	printer.Append([]string{"ABCDE", "ABCDE", "ABCDE", "ABCDE", "ABCDE"})
-	printer.Width = 30
-	printer.Separator = '+'
 
 	printer.PrintAll(false)
 
@@ -56,15 +54,13 @@ func TestFormat(t *testing.T) {
 }
 
 func TestComputeWidths(t *testing.T) {
-	printer := NewTabPrinter(os.Stdout, os.Stdin)
+	printer := NewTabPrinter(os.Stdout, os.Stdin, WithWidth(80), WithSeparator('|'))
 	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
 	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
 	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
 	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
 	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
 	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
-	printer.Width = 80
-	printer.Separator = '|'
 
 	printer.computeWidths()
 
@@ -77,15 +73,13 @@ func TestComputeWidths(t *testing.T) {
 	}
 
 	// Results should be the same even when some values are missing :
-	printer = NewTabPrinter(os.Stdout, os.Stdin)
+	printer = NewTabPrinter(os.Stdout, os.Stdin, WithWidth(80), WithSeparator('|'))
 	printer.Append([]string{"ABCDEFGH", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
 	printer.Append([]string{"", "ABCD", "", "ABCDEF"})
 	printer.Append([]string{"ABCDEFGH", "", "ABCDEFGHIJKLMNOPQR", ""})
 	printer.Append([]string{"ABCDEFGH", "ABCD", "", "ABCDEF"})
 	printer.Append([]string{"", "ABCD", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
 	printer.Append([]string{"ABCDEFGH", "", "ABCDEFGHIJKLMNOPQR", "ABCDEF"})
-	printer.Width = 80
-	printer.Separator = '|'
 
 	printer.computeWidths()
 
