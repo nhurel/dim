@@ -88,7 +88,7 @@ func (d *Dim) GetImageLabels(image string) (map[string]string, error) {
 		return nil, err
 	}
 
-	return i.ContainerConfig.Labels, err
+	return i.Config.Labels, err
 }
 
 //Remove deletes an image locally

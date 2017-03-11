@@ -23,15 +23,14 @@ import (
 	"net/http"
 	"strings"
 
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	apitypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/builder"
-	"github.com/docker/docker/pkg/ioutils"
-	"github.com/docker/docker/pkg/progress"
-	"github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/reference"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/container"
 	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib/utils"
 	"golang.org/x/net/context"
@@ -72,35 +71,39 @@ func (dc *DockerClient) Client() (*client.Client, error) {
 
 // ImageBuild builds a new image
 func (dc *DockerClient) ImageBuild(parent string, buildLabels map[string]string, tag string) error {
-	buildCtx, _, err := builder.GetContextFromReader(ioutil.NopCloser(strings.NewReader(fmt.Sprintf("FROM %s", parent))), "")
-	// Setup an upload progress bar
-	progressOutput := streamformatter.NewStreamFormatter().NewProgressOutput(&ioutils.NopWriter{}, true)
-
-	var body io.Reader = progress.NewProgressReader(buildCtx, progressOutput, 0, "", "Sending build context to Docker daemon")
-
+	var err error
 	var c *client.Client
+
 	if c, err = dc.Client(); err != nil {
 		logrus.WithError(err).Fatalln("Error occured while connecting to docker daemon")
 		return err
 	}
 
-	var resp types.ImageBuildResponse
-
-	if resp, err = c.ImageBuild(context.Background(), body, types.ImageBuildOptions{Labels: buildLabels, Tags: []string{tag}, ForceRemove: true}); err != nil {
-		logrus.WithError(err).Fatalln("Error occured while building new image")
+	tempName := fmt.Sprintf("dim_%s", time.Now().Format("20060102150405.000"))
+	var created types.ContainerCreateResponse
+	if created, err = c.ContainerCreate(context.Background(), &container.Config{Image: parent}, nil, nil, tempName); err != nil {
+		logrus.WithField("image", parent).WithError(err).Fatalln("Failed to create temp container")
 		return err
 	}
-	defer resp.Body.Close()
 
-	dec := json.NewDecoder(resp.Body)
-	var msg = &buildStream{}
-	for dec.More() {
-		dec.Decode(msg)
-		logrus.Infoln(msg.Stream)
+	if _, err = c.ContainerCommit(context.Background(), created.ID, types.ContainerCommitOptions{Changes: []string{changeLabels(buildLabels)}, Reference: tag}); err != nil {
+		logrus.WithError(err).Fatalln("Failed to commit new labels")
+		return err
 	}
-	fmt.Println(msg.Stream)
+
+	if err := c.ContainerRemove(context.Background(), created.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
+		logrus.WithField("name", tempName).WithField("id", created.ID).WithError(err).Warnln("Failed to delete temp container")
+	}
 
 	return nil
+}
+
+func changeLabels(m map[string]string) string {
+	entries := make([]string, 0, len(m))
+	for k, v := range m {
+		entries = append(entries, fmt.Sprintf("%s=\"%s\"", k, v))
+	}
+	return fmt.Sprintf("LABEL %s", strings.Join(entries, " "))
 }
 
 type buildStream struct {

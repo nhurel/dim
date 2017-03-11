@@ -188,8 +188,8 @@ func (s *IntegrationTestSuite) TestShowCommand(c *C) {
 	result, err := runCommand(dimExec, "show", "localhost/redis:3.2.1-alpine", "-k")
 
 	c.Assert(err, IsNil)
-	c.Assert(result, Equals, `Name :  localhost/redis:3.2.1-alpine
-Id :  sha256:d65f1dcf63b7475dd45368a0bbabbd67be61598a02a37815b6e9fcfcfbf67d14
+	c.Assert(result, Matches, `Name :  localhost/redis:3.2.1-alpine
+Id :  sha256:.*
 Labels:
 type = database
 
@@ -197,10 +197,10 @@ Tags:
 localhost/redis:3.2.1-alpine
 
 Ports :
-6379/tcp = {}
+6379/tcp = \{\}
 
 Volumes:
-/data = {}
+/data = \{\}
 
 Env :
  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -208,8 +208,8 @@ Env :
  REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-3.2.1.tar.gz
  REDIS_DOWNLOAD_SHA1=26c0fc282369121b4e278523fce122910b65fbbf
 
-Entrypoint : [docker-entrypoint.sh]
-Command : [redis-server]
+Entrypoint : \[docker-entrypoint.sh\]
+Command : \[redis-server\]
 `)
 
 	_, err = runCommand(dimExec, "show", "localhost/redis:3.2.1-alpine", "-k", "-o", "show_test.out")
