@@ -18,6 +18,9 @@ import (
 
 	"context"
 
+	"bufio"
+	"os"
+
 	"github.com/docker/docker/reference"
 	"github.com/nhurel/dim/cli"
 	"github.com/nhurel/dim/lib"
@@ -45,11 +48,24 @@ dim delete -r ubuntu:xenial
 
 func runDelete(c *cli.Cli, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("image name missing")
+		if s, err := os.Stdin.Stat(); err == nil && (s.Mode()&os.ModeNamedPipe != 0) {
+			scanner := bufio.NewScanner(os.Stdin)
+			for scanner.Scan() {
+				if err := doDelete(scanner.Text(), c); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	} else {
+		image := args[0]
+		return doDelete(image, c)
 	}
+	return fmt.Errorf("image name missing")
 
-	image := args[0]
+}
 
+func doDelete(image string, c *cli.Cli) error {
 	Dim.Remove(image)
 
 	if remoteFlag {
