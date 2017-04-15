@@ -35,6 +35,7 @@ import (
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/server"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func newServerCommand(c *cli.Cli, rootCommand *cobra.Command, ctx context.Context) {
@@ -44,6 +45,10 @@ func newServerCommand(c *cli.Cli, rootCommand *cobra.Command, ctx context.Contex
 		Long: `Start dim in server mode. In this mode, dim indexes your private registry and provide a search endpoint.
 Use the --port flag to specify the adress the server listens.
 	`,
+		PreRun: func(cmd *cobra.Command, args []string) {
+			sslCertFile = viper.GetString("ssl-cert-file")
+			sslKeyFile = viper.GetString("ssl-key-file")
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			handleSignal()
 
@@ -53,12 +58,22 @@ Use the --port flag to specify the adress the server listens.
 
 	serverCommand.Flags().StringVarP(&port, "port", "p", "0.0.0.0:6000", "Dim listening port")
 	serverCommand.Flags().StringVar(&indexDir, "index-path", "dim.index", "Dim listening port")
+	serverCommand.Flags().String("ssl-cert-file", "", "SSL certificate file for https connections")
+	serverCommand.Flags().String("ssl-key-file", "", "SSL key file for https connections")
+
+	viper.BindPFlag("ssl-cert-file", serverCommand.Flags().Lookup("ssl-cert-file"))
+	viper.BindPFlag("ssl-key-file", serverCommand.Flags().Lookup("ssl-key-file"))
+
 	rootCommand.AddCommand(serverCommand)
 }
 
 func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []string) error {
 	if registryURL == "" {
 		return fmt.Errorf("No registry URL given")
+	}
+
+	if (sslCertFile == "") != (sslKeyFile == "") {
+		return fmt.Errorf("ssl-cert-file and ssl-key-file cannot be defined separately")
 	}
 
 	realDir := path.Join(indexDir, time.Now().Format("20060102150405.000"))
@@ -103,13 +118,22 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 	proxy := server.NewRegistryProxy(url)
 
 	s = server.NewServer(port, idx, ctx, proxy)
-	logrus.Infoln("Server listening...")
+
+	logrus.WithField("port", port).Infoln("Server listening...")
+
+	if sslCertFile != "" {
+		logrus.WithFields(logrus.Fields{"cert": sslCertFile, "key": sslKeyFile}).Debugln("Starting https server")
+		return s.RunSecure(sslCertFile, sslKeyFile)
+	}
+
 	return s.Run()
 }
 
 var (
-	port     string
-	indexDir string
+	port        string
+	indexDir    string
+	sslCertFile string
+	sslKeyFile  string
 )
 
 var s *server.Server

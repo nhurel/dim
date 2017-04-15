@@ -52,6 +52,11 @@ func (s *Server) Run() error {
 	return s.ListenAndServe()
 }
 
+// RunSecure starts the server instance in HTTPS
+func (s *Server) RunSecure(certFile, keyFIile string) error {
+	return s.ListenAndServeTLS(certFile, keyFIile)
+}
+
 // Handler injects an index into an HandlerFunc
 func handler(i dim.RegistryIndex, dhf DimHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
