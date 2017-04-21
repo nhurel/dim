@@ -80,8 +80,10 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 	logrus.Warnf("Creating index dir at %s\n", realDir)
 
 	var authConfig *types.AuthConfig
+	var u, p string
 	if username != "" || password != "" {
 		authConfig = &types.AuthConfig{Username: username, Password: password}
+		u, p = authConfig.Username, authConfig.Password
 	}
 
 	var idx *index.Index
@@ -115,7 +117,7 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 		logrus.Infoln("All images indexed")
 	}()
 
-	proxy := server.NewRegistryProxy(url)
+	proxy := server.NewRegistryProxy(url, u, p)
 
 	s = server.NewServer(port, idx, ctx, proxy)
 
