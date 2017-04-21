@@ -16,6 +16,7 @@ package index
 import (
 	"fmt"
 	"io/ioutil"
+	"sync"
 	"text/template"
 
 	"github.com/Sirupsen/logrus"
@@ -78,10 +79,14 @@ func (c *Config) GetHooks(event dim.ActionType) []*Hook {
 	return hooks
 }
 
+var mutex = &sync.Mutex{}
+
 // Eval runs the template with the given image as parameter
 func (h *Hook) Eval(image *dim.IndexImage) error {
 	if h.eval == nil {
 		return fmt.Errorf("Cannot eval hook, it has no template : %v", h)
 	}
+	mutex.Lock()
+	defer mutex.Unlock()
 	return h.eval.Execute(ioutil.Discard, image)
 }
