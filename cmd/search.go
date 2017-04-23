@@ -113,6 +113,9 @@ func runSearch(c *cli.Cli, args []string) error {
 			return err
 		}
 		for fetched := len(results.Results); results.NumResults > fetched; {
+			if unlimitedFlag {
+				c.Out.Write([]byte("\n"))
+			}
 			if results, err = client.Search(q, a, fetched, paginationFlag); err != nil {
 				return fmt.Errorf("Failed to search images : %v", err)
 			}
