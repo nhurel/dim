@@ -90,7 +90,7 @@ func NewRootCommand(cli *cli.Cli, ctx context.Context) *cobra.Command {
 	viper.AddConfigPath("$HOME/.dim")
 	if err := viper.ReadInConfig(); err != nil {
 		switch err.(type) {
-		case *os.PathError:
+		case *os.PathError, viper.ConfigFileNotFoundError:
 			logrus.WithError(err).Debugln("No config file found")
 		default:
 			logrus.WithError(err).Fatalln("Failed to read config file")
