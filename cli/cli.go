@@ -24,7 +24,7 @@ func ReadCredentials(c *Cli, registryAuth *types.AuthConfig) {
 		return
 	}
 
-	askPassword(registryAuth, readPassword, c.Out)
+	askPassword(registryAuth, ReadPassword, c.Out)
 
 }
 
@@ -59,7 +59,8 @@ func askPassword(registryAuth *types.AuthConfig, read InputReader, w io.Writer) 
 	}
 }
 
-func readPassword(a ...interface{}) (int, error) {
+// ReadPassword reads from the terminal without echoing input
+func ReadPassword(a ...interface{}) (int, error) {
 	pass, err := gopass.GetPasswd()
 	if a, ok := a[0].(*string); ok {
 		*a = string(pass)

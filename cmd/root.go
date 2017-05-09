@@ -105,6 +105,7 @@ func NewRootCommand(cli *cli.Cli, ctx context.Context) *cobra.Command {
 	newShowCommand(cli, rootCommand, ctx)
 	newVersionCommand(cli, rootCommand, ctx)
 	newHooktestCommand(cli, rootCommand, ctx)
+	newGenPasswdCommand(cli, rootCommand, ctx)
 
 	return rootCommand
 }
