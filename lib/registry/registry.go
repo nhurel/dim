@@ -94,6 +94,8 @@ func tryNew(c *cli.Cli, registryAuth *types.AuthConfig, registryURL string, prom
 		}
 	}
 
+	logrus.WithField("auth", registryAuth).Debugln("Created transport")
+
 	return &Client{reg, transport, registryURL}, nil
 }
 
@@ -259,11 +261,13 @@ func (c *Client) DeleteImage(parsedName reference.Named) error {
 
 // ServerVersion read dim server version information
 func (c *Client) ServerVersion() (*dim.Info, error) {
+
 	var resp *http.Response
 	var err error
 	httpClient := http.Client{Transport: c.transport}
 
-	if resp, err = httpClient.Get(strings.Join([]string{c.registryURL, "/dim/version"}, "/")); err != nil {
+	endpoint := strings.TrimSuffix(c.registryURL, "/") + "/dim/version"
+	if resp, err = httpClient.Get(endpoint); err != nil {
 		return nil, fmt.Errorf("Failed to send request : %v", err)
 	}
 	defer resp.Body.Close()

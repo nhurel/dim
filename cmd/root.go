@@ -30,6 +30,7 @@ import (
 	"github.com/nhurel/dim/lib/index"
 	"github.com/nhurel/dim/lib/registry"
 	"github.com/nhurel/dim/lib/utils"
+	"github.com/nhurel/dim/server"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -196,6 +197,16 @@ func readConfigHooks(hookFns map[string]interface{}) (*index.Config, error) {
 		return nil, err
 	}
 
+	return cfg, nil
+}
+
+func readServerConfig() (*server.Config, error) {
+	cfg := &server.Config{Port: port}
+	auths := make([]*server.Authorization, 0, 10)
+	if err := viper.UnmarshalKey("server.security", &auths); err != nil {
+		return nil, err
+	}
+	cfg.Authorizations = auths
 	return cfg, nil
 }
 

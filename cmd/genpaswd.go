@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 
 	"github.com/nhurel/dim/cli"
+	"github.com/nhurel/dim/lib/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -31,8 +31,6 @@ func runGenPasswd(c *cli.Cli, args []string) error {
 			cli.ReadPassword(&password)
 		}
 	}
-	h := sha256.New()
-	h.Write([]byte(password))
-	fmt.Fprintf(c.Out, "%x\n", h.Sum(nil))
+	fmt.Fprintln(c.Out, utils.Sha256(password))
 	return nil
 }

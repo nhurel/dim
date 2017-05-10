@@ -119,7 +119,11 @@ func runServer(c *cli.Cli, ctx context.Context, cmd *cobra.Command, args []strin
 
 	proxy := server.NewRegistryProxy(url, u, p)
 
-	s = server.NewServer(port, idx, ctx, proxy)
+	var sCfg *server.Config
+	if sCfg, err = readServerConfig(); err != nil {
+		return err
+	}
+	s = server.NewServer(sCfg, idx, ctx, proxy)
 
 	logrus.WithField("port", port).Infoln("Server listening...")
 

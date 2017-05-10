@@ -51,7 +51,7 @@ func PrintVersion(c *cli.Cli, ctx context.Context) error {
 	}
 
 	if err != nil {
-		_, err = fmt.Fprintf(c.Out, "N/A (%v)\n", err)
+		fmt.Fprintf(c.Out, "N/A (%v)\n", err)
 	} else {
 		_, err = fmt.Fprintf(c.Out, "server version : %s\nserver uptime : %s\n", infos.Version, infos.Uptime)
 	}

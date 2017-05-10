@@ -37,14 +37,14 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance to listen on given port and use given index
-func NewServer(port string, index dim.RegistryIndex, ctx context.Context, proxy dim.RegistryProxy) *Server {
+func NewServer(cfg *Config, index dim.RegistryIndex, ctx context.Context, proxy dim.RegistryProxy) *Server {
 	c := environment.Set(ctx, environment.StartTimeKey, time.Now())
 
-	http.HandleFunc("/v1/search", handler(index, Search))
-	http.HandleFunc("/dim/notify", handler(index, NotifyImageChange))
-	http.HandleFunc("/dim/version", buildVersionHandler(c))
-	http.HandleFunc("/", proxy.Forwards)
-	return &Server{manners.NewWithServer(&http.Server{Addr: port, Handler: http.DefaultServeMux}), index}
+	http.HandleFunc("/v1/search", securityFilter(cfg, handler(index, Search)))
+	http.HandleFunc("/dim/notify", securityFilter(cfg, handler(index, NotifyImageChange)))
+	http.HandleFunc("/dim/version", securityFilter(cfg, buildVersionHandler(c)))
+	http.HandleFunc("/", securityFilter(cfg, proxy.Forwards))
+	return &Server{manners.NewWithServer(&http.Server{Addr: cfg.Port, Handler: http.DefaultServeMux}), index}
 }
 
 // Run starts the server instance
@@ -85,7 +85,7 @@ func Version(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to serialize the response", http.StatusInternalServerError)
 		logrus.WithError(err).Errorln("Error occured while serializing server info")
 	} else {
-		fmt.Fprint(w, string(b))
+		w.Write(b)
 	}
 }
 

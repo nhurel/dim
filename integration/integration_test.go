@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"strings"
+
 	"github.com/nhurel/dim/lib"
 	"github.com/nhurel/dim/wrapper/dockerClient"
 	. "gopkg.in/check.v1"
@@ -263,4 +265,19 @@ func (s *IntegrationTestSuite) TestSearchTemplateOption(c *C) {
 	c.Assert(result, Equals, `1 results found :
 redis:3.2.1-alpine	[6379]
 `)
+}
+
+func (s *IntegrationTestSuite) TestCredentialsWithVersion(c *C) {
+	o, err := runCommand(dimExec, "version", "-k")
+	if err == nil {
+		c.Errorf("Expected to get an authentication error but got %s", o)
+	}
+
+	o, err = runCommand(dimExec, "version", "-k", "--registry-user", "login", "--registry-password", "secure")
+	if err != nil {
+		c.Errorf("Expected to got correct credentials but got %v", err)
+	}
+	if !strings.Contains(o, "server uptime :") {
+		c.Errorf("Expected to get server uptime but got %s", o)
+	}
 }

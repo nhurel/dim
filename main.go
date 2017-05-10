@@ -30,7 +30,9 @@ func main() {
 	ctx := environment.Set(context.Background(), environment.VersionKey, Version)
 
 	if len(os.Args) == 2 && (os.Args[1] == "--version") {
-		cmd.PrintVersion(c, ctx)
+		if err := cmd.PrintVersion(c, ctx); err != nil {
+			os.Exit(1)
+		}
 		os.Exit(0)
 	}
 	if err := cmd.NewRootCommand(c, ctx).Execute(); err != nil {

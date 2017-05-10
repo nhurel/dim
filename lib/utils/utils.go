@@ -18,6 +18,8 @@ import (
 	"sort"
 	"strings"
 
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 )
 
@@ -136,4 +138,11 @@ func parseHours(hours float64) string {
 	}
 
 	return fmt.Sprintf("%0.f months ago", hours/(24*7*4))
+}
+
+// Sha256 returns the string reprensation of the given password encoded using sha256
+func Sha256(passwd string) string {
+	h := sha256.New()
+	h.Write([]byte(passwd))
+	return hex.EncodeToString(h.Sum(nil))
 }
