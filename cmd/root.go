@@ -206,6 +206,13 @@ func readServerConfig() (*server.Config, error) {
 	if err := viper.UnmarshalKey("server.security", &auths); err != nil {
 		return nil, err
 	}
+
+	for _, auth := range auths {
+		if err := auth.CompilePath(); err != nil {
+			return nil, err
+		}
+	}
+
 	cfg.Authorizations = auths
 	return cfg, nil
 }

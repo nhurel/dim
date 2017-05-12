@@ -53,27 +53,35 @@ func TestGrantAccess(t *testing.T) {
 
 func TestGetAuthorization(t *testing.T) {
 	auths := []*Authorization{
-		{Path: "/prefix"},
+		{Path: "/prefix/$"},
 		{Path: "/public"},
 		{Path: "/secure", Username: "user", Password: "p"},
 		{Path: "/method", Method: http.MethodGet},
 		{Path: "/method", Method: http.MethodPost},
+		{Path: "/prefix"},
 		{Path: "/"},
+	}
+
+	for _, auth := range auths {
+		auth.CompilePath()
 	}
 	tests := []struct {
 		givenURL    string
 		givenMethod string
 		expected    *Authorization
 	}{
-		{givenURL: "http://example.com", givenMethod: http.MethodGet, expected: auths[5]},
-		{givenURL: "/", givenMethod: http.MethodGet, expected: auths[5]},
-		{givenURL: "/unknown", givenMethod: http.MethodGet, expected: auths[5]},
-		{givenURL: "/prefix", givenMethod: http.MethodGet, expected: auths[0]},
-		{givenURL: "/prefix/", givenMethod: http.MethodGet, expected: auths[0]},
-		{givenURL: "/prefix/subpath", givenMethod: http.MethodGet, expected: auths[0]},
+		{givenURL: "http://example.com", givenMethod: http.MethodGet, expected: auths[6]},
+		{givenURL: "/", givenMethod: http.MethodGet, expected: auths[6]},
+		{givenURL: "/unknown", givenMethod: http.MethodGet, expected: auths[6]},
+		{givenURL: "/public", givenMethod: http.MethodGet, expected: auths[1]},
+		{givenURL: "/public/", givenMethod: http.MethodGet, expected: auths[1]},
+		{givenURL: "/public/subpath", givenMethod: http.MethodGet, expected: auths[1]},
 		{givenURL: "/secure", givenMethod: http.MethodGet, expected: auths[2]},
 		{givenURL: "/method", givenMethod: http.MethodGet, expected: auths[3]},
 		{givenURL: "/method", givenMethod: http.MethodPost, expected: auths[4]},
+		{givenURL: "/prefix/", givenMethod: http.MethodGet, expected: auths[0]},
+		{givenURL: "/prefix", givenMethod: http.MethodGet, expected: auths[5]},
+		{givenURL: "/prefix/subpath", givenMethod: http.MethodGet, expected: auths[5]},
 	}
 
 	for i, test := range tests {

@@ -16,7 +16,6 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/nhurel/dim/lib/utils"
@@ -24,10 +23,8 @@ import (
 
 // GetAuthorization finds the first Authorization matching the request
 func GetAuthorization(req *http.Request, auths []*Authorization) *Authorization {
-	path := req.URL.Path
 	for _, auth := range auths {
-		if (path == auth.Path || strings.HasPrefix(fmt.Sprintf("%s/", path), auth.Path)) &&
-			(auth.Method == "" || auth.Method == req.Method) {
+		if auth.Applies(req) {
 			return auth
 		}
 	}
