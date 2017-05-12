@@ -19,9 +19,9 @@ $(BINARY): $(SOURCES)
 
 distribution:
 	rm -rf dist && mkdir -p dist
-	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=windows -e GOARCH=amd64 golang:1.7.3 go build -o dist/$(BINARY)-windows.exe -ldflags "-s -X main.Version=$(git_tag)"
-	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=linux -e GOARCH=amd64 golang:1.7.3 go build -o dist/$(BINARY)-linux-x64 -ldflags "-s -X main.Version=$(git_tag)"
-	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=darwin -e GOARCH=amd64 golang:1.7.3 go build -o dist/$(BINARY)-darwin -ldflags "-s -X main.Version=$(git_tag)"
+	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=windows -e GOARCH=amd64 golang:1.8.1 go build -o dist/$(BINARY)-windows.exe -ldflags "-s -X main.Version=$(git_tag)"
+	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=linux -e GOARCH=amd64 golang:1.8.1 go build -o dist/$(BINARY)-linux-x64 -ldflags "-s -X main.Version=$(git_tag)"
+	docker run --rm -v "$$PWD":/go/src/github.com/nhurel/dim -w /go/src/github.com/nhurel/dim -e GOOS=darwin -e GOARCH=amd64 golang:1.8.1 go build -o dist/$(BINARY)-darwin -ldflags "-s -X main.Version=$(git_tag)"
 
 docker: $(BINARY)
 	docker build -t nhurel/dim:$(git_tag) .
