@@ -38,7 +38,7 @@ func securityFilter(cfg *Config, hf http.HandlerFunc) http.HandlerFunc {
 			if err := grantAccess(r, auth); err != nil {
 				u, _, _ := r.BasicAuth()
 				logrus.WithFields(logrus.Fields{"username": u, "url": r.URL}).Infoln("Rejecting request")
-				http.Error(w, err.Error(), http.StatusForbidden)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 		}
