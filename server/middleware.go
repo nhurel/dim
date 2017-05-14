@@ -31,6 +31,9 @@ func GetAuthorization(req *http.Request, auths []*Authorization) *Authorization 
 	return nil
 }
 
+const authenticateHeaderName = "WWW-Authenticate"
+const authenticateHeaderValue = "Basic realm=\"Registry Authentication\""
+
 func securityFilter(cfg *Config, hf http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		auth := GetAuthorization(r, cfg.Authorizations)
@@ -38,6 +41,7 @@ func securityFilter(cfg *Config, hf http.HandlerFunc) http.HandlerFunc {
 			if err := grantAccess(r, auth); err != nil {
 				u, _, _ := r.BasicAuth()
 				logrus.WithFields(logrus.Fields{"username": u, "url": r.URL}).Infoln("Rejecting request")
+				w.Header().Set(authenticateHeaderName, authenticateHeaderValue)
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
