@@ -51,11 +51,13 @@ func securityFilter(cfg *Config, hf http.HandlerFunc) http.HandlerFunc {
 }
 
 func grantAccess(req *http.Request, auth *Authorization) error {
-	if auth.Username != "" {
-		u, p, ok := req.BasicAuth()
-		if ok {
-			if u == auth.Username && utils.Sha256(p) == auth.Password {
-				return nil
+	if auth.Users != nil {
+		for _, user := range auth.Users {
+			u, p, ok := req.BasicAuth()
+			if ok {
+				if u == user.Username && utils.Sha256(p) == user.Password {
+					return nil
+				}
 			}
 		}
 		return fmt.Errorf("You are not allowed to access URLs matching %s", auth.Path)

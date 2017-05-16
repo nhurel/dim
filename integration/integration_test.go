@@ -268,16 +268,30 @@ redis:3.2.1-alpine	[6379]
 }
 
 func (s *IntegrationTestSuite) TestCredentialsWithVersion(c *C) {
-	o, err := runCommand(dimExec, "version", "-k")
-	if err == nil {
-		c.Errorf("Expected to get an authentication error but got %s", o)
+
+	tests := []struct {
+		givenUsername string
+		givenPassword string
+		errorExpected bool
+	}{
+		{"", "", true},
+		{"login", "secure", false},
+		{"otherlogin", "secure2", false},
+		{"login", "secure2", true},
 	}
 
-	o, err = runCommand(dimExec, "version", "-k", "--registry-user", "login", "--registry-password", "secure")
-	if err != nil {
-		c.Errorf("Expected to got correct credentials but got %v", err)
-	}
-	if !strings.Contains(o, "server uptime :") {
-		c.Errorf("Expected to get server uptime but got %s", o)
+	for _, test := range tests {
+		o, err := runCommand(dimExec, "version", "-k", "--registry-user", test.givenUsername, "--registry-password", test.givenPassword)
+		if test.errorExpected && err == nil {
+			c.Errorf("Expected to get an authentication error for user %s:%s but got %s", test.givenUsername, test.givenPassword, o)
+		}
+		if !test.errorExpected {
+			if err != nil {
+				c.Errorf("Expected to got correct credentials for user %s:%s but got %v", test.givenUsername, test.givenPassword, err)
+			}
+			if !strings.Contains(o, "server uptime :") {
+				c.Errorf("Expected to get server uptime with user %s:%s but got %s", test.givenUsername, test.givenPassword, o)
+			}
+		}
 	}
 }

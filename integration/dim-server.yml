@@ -27,9 +27,14 @@ index:
      Action: |
         {{ error "triggering push hook for image" .Name }}
         {{ sendRequest "http://dim/404.html" }}
+user: &user1
+  Username: login
+  Password: 6a934b45144e3758911efa29ed68fb2d420fa7bd568739cdcda9251fa9609b1e
+user: &user2
+  Username: otherlogin
+  Password: 9b5665f9978886cbea4c163f650f57447f41b93a3a90ecd75ccf97cace6f79fc
 
 server:
   security:
   - Path: /dim/version
-    Username: login
-    Password: 6a934b45144e3758911efa29ed68fb2d420fa7bd568739cdcda9251fa9609b1e
+    Users: [*user1, *user2]

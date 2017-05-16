@@ -28,11 +28,11 @@ func TestGrantAccess(t *testing.T) {
 		auth                         *Authorization
 		expected                     error
 	}{
-		{auth: &Authorization{Username: "private", Password: utils.Sha256("secure"), Path: "/forbdden/path"}, expected: errors.New("You are not allowed to access URLs matching /forbdden/path")},
-		{givenUsername: "private", givenPassword: "secure", auth: &Authorization{Username: "private", Password: utils.Sha256("secure"), Path: "/forbdden/path"}},
-		{givenUsername: "forbidden", givenPassword: "badPassword", auth: &Authorization{Username: "private", Password: utils.Sha256("secure"), Path: "/forbdden/path"}, expected: errors.New("You are not allowed to access URLs matching /forbdden/path")},
-		{auth: &Authorization{Username: "", Password: "", Path: "/forbdden/path"}, expected: nil},
-		{givenUsername: "private", givenPassword: "secure", auth: &Authorization{Username: "", Password: "", Path: "/forbdden/path"}, expected: nil},
+		{auth: &Authorization{Users: []*Credentials{{Username: "private", Password: utils.Sha256("secure")}}, Path: "/forbdden/path"}, expected: errors.New("You are not allowed to access URLs matching /forbdden/path")},
+		{givenUsername: "private", givenPassword: "secure", auth: &Authorization{Users: []*Credentials{{Username: "private", Password: utils.Sha256("secure")}}, Path: "/forbdden/path"}},
+		{givenUsername: "forbidden", givenPassword: "badPassword", auth: &Authorization{Users: []*Credentials{{Username: "private", Password: utils.Sha256("secure")}}, Path: "/forbdden/path"}, expected: errors.New("You are not allowed to access URLs matching /forbdden/path")},
+		{auth: &Authorization{Path: "/forbdden/path"}, expected: nil},
+		{givenUsername: "private", givenPassword: "secure", auth: &Authorization{Path: "/forbdden/path"}, expected: nil},
 	}
 
 	for i, test := range tests {
@@ -55,7 +55,7 @@ func TestGetAuthorization(t *testing.T) {
 	auths := []*Authorization{
 		{Path: "/prefix/$"},
 		{Path: "/public"},
-		{Path: "/secure", Username: "user", Password: "p"},
+		{Path: "/secure", Users: []*Credentials{{Username: "user", Password: "p"}}},
 		{Path: "/method", Method: http.MethodGet},
 		{Path: "/method", Method: http.MethodPost},
 		{Path: "/prefix"},

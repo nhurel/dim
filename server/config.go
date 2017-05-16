@@ -17,9 +17,13 @@ type Config struct {
 type Authorization struct {
 	Path       string
 	Method     string
-	Username   string
-	Password   string
+	Users      []*Credentials
 	pathRegexp *regexp.Regexp
+}
+
+// Credentials define a user credentials who can be granted authorizations
+type Credentials struct {
+	Username, Password string
 }
 
 // CompilePath compiles this Authorization Path member as a regexp
