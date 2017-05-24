@@ -1,13 +1,13 @@
 # Docker Image Manager
 
 DIM is a Docker Image Management utility. It's the perfect companion for your self-hosted private registry and provides useful commands to manage your docker images :
-- [Advanced search](#advanced-searches)
+- [Search](#searching-an-image) and [advanced search](#advanced-searches)
 - Image labels add / removal
 - Image deletion (both locally and on your private registry)
 - Show image details
 
 DIM works in two ways that are complementary :
-- server mode :  provides search feature for both the `docker` command line and `dim` client mode
+- server mode :  provides search feature for both the `docker` command line and `dim` client mode. Server mode also allows you to secure access to your private registry and provides an advanced hook configurations
 - client mode : to manage images locally and on your private registry and to run advanced searches (only with dim server enabled)
 
 
@@ -58,7 +58,7 @@ This will start both the registry and dim in server mode. These 2 containers wil
 
 By default, dim docker image is configured to index the registry available at http://docker-registry:5000 so it should work automatically. Otherwise, use the `REGISTRY_URL` environment variable to set the right registry url.
 
-Configure the yml file that will be mounted as the registry's config.yml file to have it send events to dim so that dim can maintain its index up-to-date with :
+Configure the `registry.yml` file that will be mounted as the registry's config.yml file to have it send events to dim so that dim can maintain its index up-to-date with :
 ```yml
 notifications:
   endpoints:
@@ -72,13 +72,7 @@ notifications:
 
 **Congratulations : You now have a docker registry accessible on port 6000 that provides a search endpoint !**
 
-Optionnaly, you can also setup an http server in front of the container to manage auhtorizations as described in [this docker recipe](https://docs.docker.com/registry/recipes/apache/)
-
-Example apache httpd config for dim :
-```bash
-ProxyPass        / http://dim:6000/
-ProxyPassReverse / http://dim:6000/
-```
+For more info about dim server configuration see [SERVER.md](doc/SERVER.md) file in `doc` directory
 
 # Configuration (client and server mode)
 
@@ -96,33 +90,37 @@ Finally, dim will also search for those settings in the `dim.yml` config file th
 - in current directory
 - in `$HOME/.dim/` directory  
 
-## Hooks (server configuration)
+# Managing images using dim
 
-In server mode, dim lets you create advanced hooks when an image is pushed or deleted from your registry. Hooks are defined in the server yaml configuration under the `index.hooks` key.
-For example, the following configuration will send messages to a slack channel on push events :
-```yml
-index:
-  hooks:
-    - Event: push
-      Action: |
-        {{ if eq .Name "dim" }}
-        {{ with $payload := printf `{"text": "A new dim image has been pushed : %s"}`  .FullName | withPayload }}
-          {{ with $method := withMethod "POST" }}
-            {{  sendRequest "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX" $method $payload }}
-          {{ end }}
-        {{ end }}
-        {{else}}
-        {{ with $payload := printf `{"text": "A random image has been pushed : %s"}`  .FullName | withPayload }}
-          {{ with $method := withMethod "POST" }}
-             {{  sendRequest "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX" $method $payload }}
-          {{ end }}
-        {{ end }}
-        {{ end }}
+## Pretty print an image details :
+Dim `show` command can print image details of docker images :
+```bash
+$ dim show redis:latest
+Name :  redis:latest
+Id :  sha256:a858478874d144f6bfc03ae2d4598e2942fc9994159f2872e39fae88d45bd847
+Labels:
+
+Tags:
+redis:latest
+
+Ports :
+6379/tcp = {}
+
+Volumes:
+/data = {}
+
+Env :
+ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ GOSU_VERSION=1.7
+ REDIS_VERSION=3.2.9
+ REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-3.2.9.tar.gz
+ REDIS_DOWNLOAD_SHA=6eaacfa983b287e440d0839ead20c2231749d5d6b78bbe0e0ffa3a890c59ff26
+
+Entrypoint : [docker-entrypoint.sh]
+Command : [redis-server]
 ```
 
-As you can see, hooks are defined as Go temaplates. Image information is accessible from the template allowing you to write advanced rules to trigger whatever you may need
-
-# Managing images using dim
+Using `-r` flag you can even print details of an image hosted on your private registry without pulling it first
 
 ## Adding / Editing labels on an image :
 
