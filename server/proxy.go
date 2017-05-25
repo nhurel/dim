@@ -29,14 +29,23 @@ func (rp *RegistryProxy) Forwards(w http.ResponseWriter, r *http.Request) {
 	if false {
 		w.WriteHeader(http.StatusForbidden)
 	}
-	logrus.WithFields(logrus.Fields{"registryURL": rp.target, "targetURL": r.URL}).Infoln("Forwarding request to target registry")
+
+	logrus.WithFields(logrus.Fields{"registryURL": rp.target, "targetURL": r.RequestURI}).Infoln("Forwarding request to target registry")
+
 	if rp.username != "" && rp.password != "" {
 		r.SetBasicAuth(rp.username, rp.password)
 	}
-	if rp.target.Scheme == "https" && rp.target.Host != r.Host {
+
+	if r.TLS != nil {
+		r.Header.Set("X-Forwarded-Proto", "https")
+	}
+	r.Header.Set("X-Forwarded-Host", r.Host)
+
+	if rp.target.Scheme == "https" {
 		r.URL.Scheme = "https"
+	}
+	if rp.target.Host != r.Host {
 		r.URL.Host = rp.target.Host
-		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
 		r.Host = rp.target.Host
 	}
 
