@@ -6,10 +6,15 @@ DIM is a Docker Image Management utility. It's the perfect companion for your se
 - Image deletion (both locally and on your private registry)
 - Show image details
 
+Moreover, it brings to your private registries :
+- Authentication and access controls
+- Hooks on push / delete event
+
 DIM works in two ways that are complementary :
 - server mode :  provides search feature for both the `docker` command line and `dim` client mode. Server mode also allows you to secure access to your private registry and provides an advanced hook configurations
 - client mode : to manage images locally and on your private registry and to run advanced searches (only with dim server enabled)
 
+**Finally, dim server mode is totally compatible with docker command line so you can `docker login`, `docker pull`, `docker push`, and even `docker search` against your private registry**
 
 # Installation
 
@@ -26,53 +31,8 @@ chmod a+x dim
 
 ## Server installation
 
-The easiest way to run dim server side is to run the private registry and dim with a docker-compose file like this :
-
-```yml
-# docker-compose.yml
-version: '2'
-services:
- docker-registry:
-  container_name: registry
-  restart: always
-  image: registry:2.4.1
-  volumes:
-    - registry.yml:/etc/docker/registry/config.yml
-  networks:
-     - registry
- dim:
-  container_name: dim
-  restart: always
-  image: nhurel/dim
-  ports:
-    - 6000:6000
-  networks:
-    - registry
-networks:
-  registry:
-    driver: bridge
-
-```
-
-This will start both the registry and dim in server mode. These 2 containers will be in the same network so they can talk to each other with hostnames `docker-registry` and `dim`.
-
-By default, dim docker image is configured to index the registry available at http://docker-registry:5000 so it should work automatically. Otherwise, use the `REGISTRY_URL` environment variable to set the right registry url.
-
-Configure the `registry.yml` file that will be mounted as the registry's config.yml file to have it send events to dim so that dim can maintain its index up-to-date with :
-```yml
-notifications:
-  endpoints:
-    - name: dim-listener
-      disabled: false
-      url: http://dim:6000/dim/notify
-      timeout: 1s
-      threshold: 5
-      backoff: 5000
-```
-
-**Congratulations : You now have a docker registry accessible on port 6000 that provides a search endpoint !**
-
-For more info about dim server configuration see [SERVER.md](doc/SERVER.md) file in `doc` directory
+The easiest way to deploy dim in server mode is to use the docker image as documented in [SERVER.md](doc/SERVER.md) in the `doc` directory.
+Otherwise, it's obviously possible to install the same binary as for client installation and run it with `dim server` command.
 
 # Configuration (client and server mode)
 
