@@ -222,7 +222,7 @@ const (
 __custom_func() {
 	case ${last_command} in
 		dim_show | dim_delete | dim_label | dim_hooktest)
-			__docker_images
+			__docker_complete_image_repos_and_tags
 			return
 			;;
 		*)
@@ -230,13 +230,47 @@ __custom_func() {
 	esac
 }
 
-__docker_images() {
-	local out
-	_get_comp_words_by_ref -n : cur
-	if out=$(docker images --format="{{.Repository}}\:{{.Tag}}" 2>/dev/null); then
-		COMPREPLY=( $( compgen -W "${out}" -- "$cur" ) )
-	fi
-	__ltrim_colon_completions "$cur"
+__docker_q() {
+        docker ${host:+-H "$host"} ${config:+--config "$config"} 2>/dev/null "$@"
 }
+
+__docker_images() {
+        local images_args=""
+
+        case "$DOCKER_COMPLETION_SHOW_IMAGE_IDS" in
+                all)
+                        images_args="--no-trunc -a"
+                        ;;
+                non-intermediate)
+                        images_args="--no-trunc"
+                        ;;
+        esac
+
+        local repo_print_command
+        if [ "${DOCKER_COMPLETION_SHOW_TAGS:-yes}" = "yes" ]; then
+                repo_print_command='print $1; print $1":"$2'
+        else
+                repo_print_command='print $1'
+        fi
+
+        local awk_script
+        case "$DOCKER_COMPLETION_SHOW_IMAGE_IDS" in
+                all|non-intermediate)
+                        awk_script='NR>1 { print $3; if ($1 != "<none>") { '"$repo_print_command"' } }'
+                        ;;
+                none|*)
+                        awk_script='NR>1 && $1 != "<none>" { '"$repo_print_command"' }'
+                        ;;
+        esac
+
+        __docker_q images $images_args | awk "$awk_script" | grep -v '<none>$'
+}
+
+__docker_complete_image_repos_and_tags() {
+        local reposAndTags="$(__docker_q images | awk 'NR>1 && $1 != "<none>" { print $1; print $1":"$2 }')"
+        COMPREPLY=( $(compgen -W "$reposAndTags" -- "$cur") )
+        __ltrim_colon_completions "$cur"
+}
+
 	`
 )
