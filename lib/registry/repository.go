@@ -16,6 +16,8 @@ package registry
 import (
 	"encoding/json"
 
+	"sync"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/digest"
@@ -172,19 +174,33 @@ func WalkImages(r dim.Repository) <-chan *dim.RegistryImage {
 			return
 		}
 
-		for _, tag := range tags {
-			l = l.WithField("tag", tag)
-			l.Debugln("Getting image details")
+		wg := sync.WaitGroup{}
+		wg.Add(10)
+		ch := make(chan string, 10)
+		for i := 0; i < 10; i++ {
+			go func() {
+				for tag := range ch {
+					l = l.WithField("tag", tag)
+					l.Debugln("Getting image details")
 
-			var img *dim.RegistryImage
-			if img, err = r.Image(tag); err != nil {
-				logrus.WithError(err).Errorln("Failed to get image")
-				return
-			}
+					var img *dim.RegistryImage
+					if img, err = r.Image(tag); err != nil {
+						logrus.WithError(err).Errorln("Failed to get image")
+						return
+					}
 
-			l.WithField("image", img).Debugln("Walking on image")
-			images <- img
+					l.WithField("image", img).Debugln("Walking on image")
+					images <- img
+				}
+				wg.Done()
+			}()
 		}
+
+		for _, tag := range tags {
+			ch <- tag
+		}
+		close(ch)
+		wg.Wait()
 
 	}()
 
