@@ -63,40 +63,63 @@ func New(cfg *Config, regClient dim.RegistryClient) (*Index, error) {
 // Build creates a full index from the registry.
 // The returned channel is closed once all images are indexed so the caller can block until the index is built if needed
 func (idx *Index) Build() <-chan bool {
+	// Channel to indicate to the caller when the indexation is done
 	done := make(chan bool, 1)
 
 	go func() {
+
 		repositories := idx.RegClient.WalkRepositories()
 
+		// Channel to browse all repository images
 		images := make(chan *repoImage, 10)
 
-		submitWg := sync.WaitGroup{}
+		// Waitgoup to watch when all repo images have been read and pushed to images channel
+		browseImgWg := sync.WaitGroup{}
 		for repository := range repositories {
-			submitWg.Add(1)
+			browseImgWg.Add(1)
 			go func(repo dim.Repository) {
-				defer submitWg.Done()
+				defer browseImgWg.Done()
 				for img := range repo.WalkImages() {
 					images <- &repoImage{repo.Named().Name(), img}
 				}
 			}(repository)
 		}
 
+		// Channel to push parsed images, erady o be indexed
+		tasks := make(chan *dim.IndexImage, 5)
+
+		// Waitgroup to watch when all image have been parsed and pushed i tasks channel
+		parseImgWg := sync.WaitGroup{}
+		parseImgWg.Add(3)
+		for i := 0; i < 3; i++ {
+			go func() {
+				defer parseImgWg.Done()
+				for img := range images {
+					logrus.WithField("reponame", img.repoName).Infoln("Indexing image")
+					tasks <- Parse(img.repoName, img.image)
+				}
+			}()
+		}
+
+		batch := idx.NewBatch()
 		go func() {
-			doneWG := sync.WaitGroup{}
-			for img := range images {
-				doneWG.Add(1)
-				go func(n string, i *dim.RegistryImage) {
-					defer doneWG.Done()
-					logrus.WithField("reponame", n).Infoln("Indexing image")
-					idx.IndexImage(Parse(n, i))
-				}(img.repoName, img.image)
+			for task := range tasks {
+				batch.Index(task.FullName, task)
 			}
-			doneWG.Wait()
+			if err := idx.Batch(batch); err != nil {
+				logrus.WithError(err).Errorln("Failed to index initial repository state")
+			}
 			close(done)
 		}()
 
-		submitWg.Wait()
+		// When all images have been pushd to the channel, close it
+		browseImgWg.Wait()
 		close(images)
+
+		// When all images have been parsed and submited to indexation batch channel, close it
+		parseImgWg.Wait()
+		close(tasks)
+
 	}()
 	return done
 }
